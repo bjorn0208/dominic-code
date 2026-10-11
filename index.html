@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Landpage Profissional</title>
+    <style>
+        :root {
+            --primary-color: #64e894;
+            --secondary-color: #f7f7f7;
+            --text-color: #333;
+            --button-color: #ff5722;
+            --gradient-deg: 10deg;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-image: url('https://via.placeholder.com/1920x1080?text=Robo+de+Fundo');
+            background-size: cover;
+            background-position: center;
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin: 0;
+        }
+
+        nav ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+        }
+
+        nav li {
+            margin-left: 20px;
+        }
+
+        nav a {
+            color: var(--text-color);
+            text-decoration: none;
+            font-size: 1.2rem;
+        }
+
+        main {
+            padding-top: 80px;
+            background-color: var(--secondary-color');
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            max-width: 960px;
+            text-align: center;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        p {
+            color: var(--text-color);
+            font-size: 1.4rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .cta-button {
+            background-color: var(--button-color);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 5px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 1.4rem;
+            cursor: pointer;
+        }
+
+        .cta-button:hover {
+            background-color: var(--button-color);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+        }
+
+        @keyframes scrollEffect {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-30px); }
+            100% { transform: translateY(0); }
+        }
+
+        body {
+            animation: scrollEffect infinite;
+        }
+
+        .cta-button {
+            background-color: var(--button-color);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 5px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 1.4rem;
+            cursor: pointer;
+        }
+
+        .cta-button:hover {
+            background-color: var(--button-color);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Landpage Profissional</h1>
+        <nav>
+            <ul>
+                <li><a href="#about">Sobre nós</a></li>
+                <li><a href="#services">Serviços</a></li>
+                <li><a href="#contact">Contato</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h2>Introdução ao IA</h2>
+        <p>A Inteligência Artificial (IA) é uma área de pesquisa e desenvolvimento que se concentra em criar sistemas capazes de aprender, analisar, gerenciar e tomar decisões baseadas em dados. Aqui estão algumas das principais áreas da IA:</p>
+
+        <ul class="list">
+            <li>Reconhecimento facial</li>
+            <li>Sintese de voz</li>
+            <li>Gestão de imagens</li>
+            <li>Predictivo maintenance</li>
+            <li>Aprendizado profundo</li>
+            <li>Natural language processing (NLP)</li>
+        </ul>
+
+        <p>As tecnologias e os conceitos da IA estão se integrando cada vez mais com as áreas de desenvolvimento web, mobile e IoT. Com a evolução dessas tecnologias, o futuro do mundo é marcado pela inteligência artificial.</p>
+
+        <a href="#cta" class="cta-button">Saiba Mais</a>
+    </main>
+
+    <footer>
+        <div class="container">
+            <h3>Sobre nós</h3>
+            <p>Conheça mais sobre nossa empresa e nossos serviços.</p>
+            <ul class="list">
+                <li><a href="#about">Sobre nós</a></li>
+                <li><a href="#services">Serviços</a></li>
+                <li><a href="#contact">Contato</a></li>
+            </ul>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctaButton = document.querySelector('.cta-button');
+            ctaButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                alert('Aqui está mais sobre a IA!');
+            });
+        });
+    </script>
+</body>
+</html>
