@@ -1,0 +1,2200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fazenda 3D — Simulador Isométrico</title>
+<style>
+/* ================= FAZENDA 3D — ESTILOS ================= */
+:root {
+  --wood: #8b5a2b;
+  --wood-dark: #6b4420;
+  --panel: #fff8e7;
+  --panel-border: #c98f3f;
+  --green: #4caf50;
+  --green-dark: #2e7d32;
+  --red: #e53935;
+  --blue: #2196f3;
+  --text: #4a2f14;
+  --gold: #ffc107;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  background: #7ec850;
+  user-select: none;
+}
+
+#game-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  display: block; cursor: grab;
+  touch-action: none;
+}
+#game-canvas.dragging { cursor: grabbing; }
+#game-canvas.mode-build, #game-canvas.mode-move { cursor: crosshair; }
+#game-canvas.mode-remove { cursor: not-allowed; }
+#game-canvas.mode-rotate { cursor: pointer; }
+
+.hidden { display: none !important; }
+
+/* ---------- HUD superior ---------- */
+#hud-top {
+  position: absolute; top: 10px; left: 10px; right: 10px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  pointer-events: none; z-index: 20;
+}
+#hud-top > * { pointer-events: auto; }
+
+.hud-card {
+  background: var(--panel);
+  border: 3px solid var(--panel-border);
+  border-radius: 14px;
+  box-shadow: 0 3px 0 rgba(0,0,0,.25);
+  color: var(--text);
+}
+
+#profile-card { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; }
+#avatar {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: linear-gradient(180deg, #ffe082, #ffb74d);
+  border: 3px solid var(--wood);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px;
+}
+#farm-name { font-weight: bold; font-size: 15px; }
+#level-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+#level-star { font-size: 16px; }
+#level-text { font-size: 13px; font-weight: bold; color: #a06a00; }
+#xp-bar {
+  width: 110px; height: 12px; background: #d7ccc8;
+  border-radius: 6px; overflow: hidden; border: 1px solid #a1887f;
+}
+#xp-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #66bb6a, #43a047); transition: width .3s; }
+
+#currencies { display: flex; gap: 8px; align-items: center; }
+.currency { display: flex; align-items: center; gap: 6px; padding: 8px 10px; font-weight: bold; font-size: 15px; }
+.cur-icon { font-size: 20px; }
+.currency button {
+  width: 22px; height: 22px; border: none; border-radius: 50%;
+  background: var(--green); color: #fff; font-weight: bold; cursor: pointer;
+  font-size: 14px; line-height: 1;
+}
+.currency button:hover { background: var(--green-dark); }
+#btn-settings { padding: 8px 12px; font-size: 20px; cursor: pointer; }
+
+/* ---------- Menu lateral ---------- */
+#side-menu {
+  position: absolute; left: 10px; top: 90px;
+  display: flex; flex-direction: column; gap: 10px; z-index: 15;
+}
+.side-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  width: 74px; padding: 8px 4px;
+  background: var(--panel);
+  border: 3px solid var(--panel-border); border-radius: 14px;
+  box-shadow: 0 3px 0 rgba(0,0,0,.25);
+  color: var(--text); font-weight: bold; font-size: 11px;
+  cursor: pointer;
+}
+.side-btn:hover { transform: translateX(2px); }
+.side-btn.active { background: #ffe0b2; border-color: var(--wood); }
+.side-icon { font-size: 24px; }
+
+/* ---------- Barra de construção ---------- */
+#build-bar {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 10px; z-index: 15;
+}
+.build-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  width: 84px; padding: 9px 4px;
+  background: var(--wood); color: #fff;
+  border: 3px solid var(--wood-dark); border-radius: 14px;
+  box-shadow: 0 4px 0 rgba(0,0,0,.3);
+  font-weight: bold; font-size: 12px; cursor: pointer;
+}
+.build-btn:hover { filter: brightness(1.1); }
+.build-btn.active { background: var(--green); border-color: var(--green-dark); }
+.build-icon { font-size: 22px; }
+
+/* ---------- Barra de confirmação ---------- */
+#confirm-bar {
+  position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--panel); border: 3px solid var(--panel-border);
+  border-radius: 14px; padding: 8px 14px;
+  z-index: 18; box-shadow: 0 4px 0 rgba(0,0,0,.3);
+  color: var(--text); font-weight: bold;
+}
+.btn-ok {
+  background: var(--green); color: #fff; border: none;
+  padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px;
+}
+.btn-ok:hover { background: var(--green-dark); }
+.btn-cancel {
+  background: #b0bec5; color: #263238; border: none;
+  padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px;
+}
+.btn-cancel:hover { background: #90a4ae; }
+
+/* ---------- Toast ---------- */
+#toast {
+  position: absolute; top: 78px; left: 50%; transform: translateX(-50%);
+  background: rgba(33,33,33,.9); color: #fff;
+  padding: 10px 20px; border-radius: 12px; font-weight: bold; font-size: 14px;
+  z-index: 40; pointer-events: none; transition: opacity .3s;
+}
+
+/* ---------- Modais ---------- */
+#modal-overlay, #dialog-overlay {
+  position: absolute; inset: 0; z-index: 50;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+}
+#modal {
+  width: min(680px, 94vw); max-height: 82vh;
+  background: var(--panel); border: 4px solid var(--panel-border);
+  border-radius: 18px; display: flex; flex-direction: column;
+  box-shadow: 0 8px 0 rgba(0,0,0,.3);
+}
+#modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; border-bottom: 3px solid var(--panel-border);
+}
+#modal-title { font-size: 20px; font-weight: bold; color: var(--text); }
+#modal-close {
+  background: var(--red); color: #fff; border: none;
+  width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold;
+}
+#modal-body { padding: 14px; overflow-y: auto; color: var(--text); }
+
+.shop-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.shop-tab {
+  padding: 7px 14px; border-radius: 10px; border: 2px solid var(--panel-border);
+  background: #fff; font-weight: bold; cursor: pointer; font-size: 13px;
+}
+.shop-tab.active { background: var(--wood); color: #fff; }
+
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.shop-item {
+  background: #fff; border: 2px solid var(--panel-border); border-radius: 12px;
+  padding: 10px; display: flex; flex-direction: column; gap: 6px; align-items: center;
+}
+.shop-item-icon { font-size: 34px; }
+.shop-item-name { font-weight: bold; font-size: 14px; }
+.shop-item-size { font-size: 11px; color: #795548; }
+.shop-item-price { font-weight: bold; color: #a06a00; }
+.shop-item-locked { font-size: 11px; color: var(--red); font-weight: bold; }
+.shop-buy-btn {
+  background: var(--green); color: #fff; border: none; border-radius: 8px;
+  padding: 7px 16px; font-weight: bold; cursor: pointer; font-size: 13px;
+}
+.shop-buy-btn:disabled { background: #b0bec5; cursor: not-allowed; }
+.shop-buy-btn:not(:disabled):hover { background: var(--green-dark); }
+
+.mission-item, .achievement-item {
+  background: #fff; border: 2px solid var(--panel-border); border-radius: 12px;
+  padding: 10px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+}
+.mission-info, .achievement-info { flex: 1; }
+.mission-title, .achievement-title { font-weight: bold; font-size: 14px; }
+.mission-desc, .achievement-desc { font-size: 12px; color: #6d4c41; }
+.mission-progress { font-size: 12px; font-weight: bold; color: var(--blue); margin-top: 2px; }
+.mission-reward, .achievement-reward { font-size: 13px; font-weight: bold; color: #a06a00; white-space: nowrap; }
+.mission-done .mission-title { color: var(--green-dark); }
+.achievement-done { border-color: var(--gold); background: #fffde7; }
+
+.settings-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 4px; border-bottom: 1px solid #e0d5c0; font-weight: bold;
+}
+.settings-row select, .settings-row input[type=range] { cursor: pointer; }
+.settings-btn {
+  width: 100%; margin-top: 12px; padding: 10px;
+  border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px;
+}
+
+.friends-placeholder { text-align: center; padding: 30px 10px; color: #6d4c41; font-size: 14px; }
+
+/* ---------- Diálogo ---------- */
+#dialog {
+  width: min(400px, 90vw);
+  background: var(--panel); border: 4px solid var(--panel-border);
+  border-radius: 16px; padding: 20px; text-align: center;
+  box-shadow: 0 8px 0 rgba(0,0,0,.3);
+}
+#dialog-text { color: var(--text); font-weight: bold; font-size: 15px; margin-bottom: 16px; }
+#dialog-buttons { display: flex; gap: 10px; justify-content: center; }
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 640px) {
+  #farm-name { font-size: 12px; }
+  #xp-bar { width: 70px; }
+  #avatar { width: 42px; height: 42px; font-size: 24px; }
+  .side-btn { width: 58px; font-size: 9px; }
+  .side-icon { font-size: 19px; }
+  .build-btn { width: 62px; font-size: 10px; padding: 7px 2px; }
+  .build-icon { font-size: 18px; }
+  .currency { font-size: 13px; padding: 6px 8px; }
+  #side-menu { top: 78px; }
+  #confirm-bar {
+    bottom: 96px; max-width: 94vw;
+    flex-wrap: wrap; justify-content: center;
+    font-size: 13px;
+  }
+  #modal { max-height: 88vh; }
+}
+
+</style>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+
+<!-- ================= HUD SUPERIOR ================= -->
+<div id="hud-top">
+  <div id="profile-card" class="hud-card">
+    <div id="avatar">🧑‍🌾</div>
+    <div id="profile-info">
+      <div id="farm-name">Fazenda do Jogador</div>
+      <div id="level-row">
+        <span id="level-star">⭐</span>
+        <span id="level-text">Nível 1</span>
+        <div id="xp-bar"><div id="xp-fill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="currencies">
+    <div class="currency hud-card" id="coins-card">
+      <span class="cur-icon">🪙</span>
+      <span id="coins-value">0</span>
+      <button id="btn-add-coins" title="Loja de moedas">＋</button>
+    </div>
+    <div class="currency hud-card" id="gems-card">
+      <span class="cur-icon">💎</span>
+      <span id="gems-value">0</span>
+      <button id="btn-add-gems" title="Loja de diamantes">＋</button>
+    </div>
+    <button id="btn-settings" class="hud-card" title="Configurações">⚙️</button>
+  </div>
+</div>
+
+<!-- ================= MENU LATERAL ================= -->
+<div id="side-menu">
+  <button class="side-btn" data-panel="missions"><span class="side-icon">📋</span><span class="side-label" data-i18n="menu.missions">Missões</span></button>
+  <button class="side-btn" data-panel="shop"><span class="side-icon">🏪</span><span class="side-label" data-i18n="menu.shop">Loja</span></button>
+  <button class="side-btn" data-panel="achievements"><span class="side-icon">🏆</span><span class="side-label" data-i18n="menu.achievements">Conquistas</span></button>
+  <button class="side-btn" data-panel="friends"><span class="side-icon">👥</span><span class="side-label" data-i18n="menu.friends">Amigos</span></button>
+</div>
+
+<!-- ================= BARRA DE CONSTRUÇÃO (INFERIOR) ================= -->
+<div id="build-bar">
+  <button class="build-btn" id="btn-build"><span class="build-icon">🪧</span><span class="build-label" data-i18n="build.build">Construir</span></button>
+  <button class="build-btn" id="btn-move"><span class="build-icon">✥</span><span class="build-label" data-i18n="build.move">Mover</span></button>
+  <button class="build-btn" id="btn-remove"><span class="build-icon">✖</span><span class="build-label" data-i18n="build.remove">Remover</span></button>
+  <button class="build-btn" id="btn-rotate"><span class="build-icon">🔄</span><span class="build-label" data-i18n="build.rotate">Girar</span></button>
+  <button class="build-btn" id="btn-buy"><span class="build-icon">🛒</span><span class="build-label" data-i18n="build.buy">Comprar</span></button>
+</div>
+
+<!-- Barra de confirmação flutuante (construir / mover / girar) -->
+<div id="confirm-bar" class="hidden">
+  <span id="confirm-info"></span>
+  <button id="confirm-ok" class="btn-ok">✓ Confirmar</button>
+  <button id="confirm-cancel" class="btn-cancel">✕ Cancelar</button>
+</div>
+
+<!-- Toast de avisos -->
+<div id="toast" class="hidden"></div>
+
+<!-- ================= PAINÉIS MODAIS ================= -->
+<div id="modal-overlay" class="hidden">
+  <div id="modal">
+    <div id="modal-header">
+      <span id="modal-title">Título</span>
+      <button id="modal-close">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Diálogo de confirmação (remover etc.) -->
+<div id="dialog-overlay" class="hidden">
+  <div id="dialog">
+    <div id="dialog-text"></div>
+    <div id="dialog-buttons">
+      <button id="dialog-cancel" class="btn-cancel" data-i18n="dialog.cancel">Cancelar</button>
+      <button id="dialog-ok" class="btn-ok" data-i18n="dialog.ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= FAZENDA 3D — DADOS DO JOGO =================
+   Catálogo de construções, missões e conquistas.
+   Cada construção define: id, nome, ícone, preço, tamanho (w×d em tiles),
+   nível necessário, categoria e se pode ser girada. */
+
+const BUILDINGS = {
+  house: {
+    id: 'house', name: 'Casa Principal', icon: '🏠',
+    price: 500, w: 3, d: 3, level: 1, category: 'construcoes',
+    desc: 'Centro administrativo da fazenda.',
+    refund: 0.5
+  },
+  barn: {
+    id: 'barn', name: 'Celeiro', icon: '🏚️',
+    price: 400, w: 3, d: 3, level: 1, category: 'construcoes',
+    desc: 'Armazena produtos agrícolas.',
+    refund: 0.5
+  },
+  stable: {
+    id: 'stable', name: 'Estábulo', icon: '🐴',
+    price: 300, w: 2, d: 2, level: 1, category: 'construcoes',
+    desc: 'Abriga vacas e produz leite (fase 2).',
+    refund: 0.5
+  },
+  coop: {
+    id: 'coop', name: 'Galinheiro', icon: '🐔',
+    price: 250, w: 2, d: 2, level: 1, category: 'construcoes',
+    desc: 'Abriga galinhas e produz ovos (fase 2).',
+    refund: 0.5
+  },
+  well: {
+    id: 'well', name: 'Poço', icon: '🪣',
+    price: 150, w: 1, d: 1, level: 1, category: 'construcoes',
+    desc: 'Fornece água para irrigação (fase 2).',
+    refund: 0.5
+  },
+  stall: {
+    id: 'stall', name: 'Barraca de Vendas', icon: '🎪',
+    price: 200, w: 2, d: 1, level: 1, category: 'construcoes',
+    desc: 'Ponto de comercialização de produtos (fase 3).',
+    refund: 0.5
+  },
+  fence: {
+    id: 'fence', name: 'Cerca', icon: '🚧',
+    price: 10, w: 1, d: 1, level: 1, category: 'cercas',
+    desc: 'Delimita áreas e currais.',
+    refund: 0.5
+  },
+  tree: {
+    id: 'tree', name: 'Árvore', icon: '🌳',
+    price: 50, w: 1, d: 1, level: 1, category: 'arvores',
+    desc: 'Decoração natural da fazenda.',
+    refund: 0.5
+  },
+  flowers: {
+    id: 'flowers', name: 'Canteiro de Flores', icon: '🌷',
+    price: 30, w: 1, d: 1, level: 1, category: 'decoracoes',
+    desc: 'Enfeita os caminhos da fazenda.',
+    refund: 0.5
+  },
+  path: {
+    id: 'path', name: 'Trilha de Pedra', icon: '🪨',
+    price: 15, w: 1, d: 1, level: 1, category: 'decoracoes',
+    desc: 'Caminho decorativo de pedras.',
+    refund: 0.5
+  }
+};
+
+const SHOP_CATEGORIES = [
+  { id: 'construcoes', name: 'Construções' },
+  { id: 'decoracoes', name: 'Decorações' },
+  { id: 'cercas', name: 'Cercas' },
+  { id: 'arvores', name: 'Árvores' }
+];
+
+/* Missões iniciais — progresso rastreado por contadores do jogo. */
+const MISSIONS = [
+  { id: 'm_house', title: 'Lar doce lar', desc: 'Construa a Casa Principal.',
+    stat: 'built_house', target: 1, rewardCoins: 100, rewardXp: 50 },
+  { id: 'm_well', title: 'Água na torneira', desc: 'Construa um Poço.',
+    stat: 'built_well', target: 1, rewardCoins: 80, rewardXp: 40 },
+  { id: 'm_fence', title: 'Cercando o sítio', desc: 'Posicione 10 Cercas.',
+    stat: 'built_fence', target: 10, rewardCoins: 120, rewardXp: 60 },
+  { id: 'm_tree', title: 'Pegada verde', desc: 'Plante 3 Árvores.',
+    stat: 'built_tree', target: 3, rewardCoins: 90, rewardXp: 45 },
+  { id: 'm_any', title: 'Em obras', desc: 'Construa 5 estruturas quaisquer.',
+    stat: 'built_any', target: 5, rewardCoins: 150, rewardXp: 75 },
+  { id: 'm_land', title: 'Território', desc: 'Compre 1 expansão de terreno.',
+    stat: 'land_expansions', target: 1, rewardCoins: 200, rewardXp: 100 }
+];
+
+/* Conquistas de longo prazo. */
+const ACHIEVEMENTS = [
+  { id: 'a_first', title: 'Primeira construção', desc: 'Construa sua primeira estrutura.',
+    stat: 'built_any', target: 1, rewardCoins: 50 },
+  { id: 'a_five', title: 'Constructor', desc: 'Construa 5 estruturas.',
+    stat: 'built_any', target: 5, rewardCoins: 150 },
+  { id: 'a_ten', title: 'Mestre das obras', desc: 'Construa 10 estruturas.',
+    stat: 'built_any', target: 10, rewardCoins: 300 },
+  { id: 'a_rich', title: 'Cofrinho cheio', desc: 'Acumule 2.000 moedas.',
+    stat: 'peak_coins', target: 2000, rewardCoins: 200 },
+  { id: 'a_level5', title: 'Fazendeiro experiente', desc: 'Alcance o nível 5.',
+    stat: 'level', target: 5, rewardCoins: 250 },
+  { id: 'a_expand', title: 'Expansor', desc: 'Compre 2 expansões de terreno.',
+    stat: 'land_expansions', target: 2, rewardCoins: 300 }
+];
+
+/* Expansão de terreno: cada compra adiciona um anel de tiles ao redor da área atual. */
+const LAND_EXPANSION = {
+  basePrice: 250,
+  priceGrowth: 1.6,
+  maxExpansions: 6
+};
+
+/* XP necessário por nível (nível 1 → 100, cresce 50% por nível). */
+function xpForLevel(level) {
+  return Math.round(100 * Math.pow(1.5, level - 1));
+}
+
+</script>
+<script>
+/* ================= FAZENDA 3D — PROJEÇÃO ISOMÉTRICA E PRIMITIVAS DE DESENHO ================= */
+
+const TILE_W = 64;   // largura do losango em px (zoom 1)
+const TILE_H = 32;   // altura do losango em px
+const TILE_Z = 28;   // altura de 1 unidade "z" em px
+
+/* Converte coordenadas de grade (podem ser fracionárias) + altura em coords de mundo. */
+function projectPoint(gx, gy, gz) {
+  return {
+    x: (gx - gy) * (TILE_W / 2),
+    y: (gx + gy) * (TILE_H / 2) - gz * TILE_Z
+  };
+}
+
+/* Converte coords de tela (mundo, sem câmera) para grade (inteiro do tile). */
+function screenToGrid(wx, wy) {
+  const a = wx / (TILE_W / 2);
+  const b = wy / (TILE_H / 2);
+  const gx = (b + a) / 2;
+  const gy = (b - a) / 2;
+  return { gx: Math.floor(gx), gy: Math.floor(gy) };
+}
+
+/* Aplica câmera: mundo → tela. */
+function worldToScreen(cam, wx, wy, canvasW, canvasH) {
+  return {
+    x: (wx - cam.x) * cam.zoom + canvasW / 2,
+    y: (wy - cam.y) * cam.zoom + canvasH / 2
+  };
+}
+
+/* Tela → mundo (sem câmera). */
+function screenToWorld(cam, sx, sy, canvasW, canvasH) {
+  return {
+    x: (sx - canvasW / 2) / cam.zoom + cam.x,
+    y: (sy - canvasH / 2) / cam.zoom + cam.y
+  };
+}
+
+/* ---------- Primitivas de desenho ---------- */
+
+function shadeColor(hex, factor) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  r = Math.min(255, Math.max(0, Math.round(r * factor)));
+  g = Math.min(255, Math.max(0, Math.round(g * factor)));
+  b = Math.min(255, Math.max(0, Math.round(b * factor)));
+  return `rgb(${r},${g},${b})`;
+}
+
+/* Desenha um prisma isométrico (caixa) na grade, com faces sombreadas. */
+function drawPrism(ctx, cam, cw, ch, gx, gy, w, d, h, color, alpha) {
+  if (alpha !== undefined) ctx.globalAlpha = alpha;
+  const p = [
+    projectPoint(gx, gy, 0), projectPoint(gx + w, gy, 0),
+    projectPoint(gx + w, gy + d, 0), projectPoint(gx, gy + d, 0),
+    projectPoint(gx, gy, h), projectPoint(gx + w, gy, h),
+    projectPoint(gx + w, gy + d, h), projectPoint(gx, gy + d, h)
+  ].map(pt => worldToScreen(cam, pt.x, pt.y, cw, ch));
+
+  // face esquerda (gy+d)
+  ctx.fillStyle = shadeColor(color, 0.72);
+  ctx.beginPath();
+  ctx.moveTo(p[3].x, p[3].y); ctx.lineTo(p[2].x, p[2].y);
+  ctx.lineTo(p[6].x, p[6].y); ctx.lineTo(p[7].x, p[7].y);
+  ctx.closePath(); ctx.fill();
+
+  // face direita (gx+w)
+  ctx.fillStyle = shadeColor(color, 0.88);
+  ctx.beginPath();
+  ctx.moveTo(p[2].x, p[2].y); ctx.lineTo(p[1].x, p[1].y);
+  ctx.lineTo(p[5].x, p[5].y); ctx.lineTo(p[6].x, p[6].y);
+  ctx.closePath(); ctx.fill();
+
+  // topo
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(p[4].x, p[4].y); ctx.lineTo(p[5].x, p[5].y);
+  ctx.lineTo(p[6].x, p[6].y); ctx.lineTo(p[7].x, p[7].y);
+  ctx.closePath(); ctx.fill();
+
+  // contorno sutil estilo cartoon
+  ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(p[4].x, p[4].y); ctx.lineTo(p[5].x, p[5].y);
+  ctx.lineTo(p[6].x, p[6].y); ctx.lineTo(p[7].x, p[7].y);
+  ctx.closePath(); ctx.stroke();
+
+  if (alpha !== undefined) ctx.globalAlpha = 1;
+}
+
+/* Telhado de duas águas (cumeeira ao longo do eixo maior). */
+function drawGableRoof(ctx, cam, cw, ch, gx, gy, w, d, baseH, ridgeH, color, axis) {
+  const top = shadeColor(color, 1.0);
+  const sideL = shadeColor(color, 0.7);
+  const sideR = shadeColor(color, 0.85);
+  const alongX = axis === 'x';
+
+  let corners, ridgeA, ridgeB;
+  if (alongX) {
+    corners = [
+      projectPoint(gx, gy, baseH), projectPoint(gx + w, gy, baseH),
+      projectPoint(gx + w, gy + d, baseH), projectPoint(gx, gy + d, baseH)
+    ];
+    ridgeA = projectPoint(gx, gy + d / 2, baseH + ridgeH);
+    ridgeB = projectPoint(gx + w, gy + d / 2, baseH + ridgeH);
+  } else {
+    corners = [
+      projectPoint(gx, gy, baseH), projectPoint(gx + w, gy, baseH),
+      projectPoint(gx + w, gy + d, baseH), projectPoint(gx, gy + d, baseH)
+    ];
+    ridgeA = projectPoint(gx + w / 2, gy, baseH + ridgeH);
+    ridgeB = projectPoint(gx + w / 2, gy + d, baseH + ridgeH);
+  }
+  const c = corners.map(pt => worldToScreen(cam, pt.x, pt.y, cw, ch));
+  const ra = worldToScreen(cam, ridgeA.x, ridgeA.y, cw, ch);
+  const rb = worldToScreen(cam, ridgeB.x, ridgeB.y, cw, ch);
+
+  // duas águas
+  ctx.fillStyle = sideL;
+  ctx.beginPath();
+  ctx.moveTo(c[0].x, c[0].y); ctx.lineTo(c[1].x, c[1].y);
+  ctx.lineTo(rb.x, rb.y); ctx.lineTo(ra.x, ra.y);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = sideR;
+  ctx.beginPath();
+  ctx.moveTo(c[1].x, c[1].y); ctx.lineTo(c[2].x, c[2].y);
+  ctx.lineTo(rb.x, rb.y);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = top;
+  ctx.beginPath();
+  ctx.moveTo(c[2].x, c[2].y); ctx.lineTo(c[3].x, c[3].y);
+  ctx.lineTo(ra.x, ra.y); ctx.lineTo(rb.x, rb.y);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = sideR;
+  ctx.beginPath();
+  ctx.moveTo(c[3].x, c[3].y); ctx.lineTo(c[0].x, c[0].y);
+  ctx.lineTo(ra.x, ra.y);
+  ctx.closePath(); ctx.fill();
+
+  ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(ra.x, ra.y); ctx.lineTo(rb.x, rb.y);
+  ctx.stroke();
+}
+
+/* Losango de tile. */
+function tileCorners(cam, cw, ch, gx, gy) {
+  return [
+    projectPoint(gx, gy, 0), projectPoint(gx + 1, gy, 0),
+    projectPoint(gx + 1, gy + 1, 0), projectPoint(gx, gy + 1, 0)
+  ].map(pt => worldToScreen(cam, pt.x, pt.y, cw, ch));
+}
+
+function drawTileDiamond(ctx, corners, fill, stroke) {
+  ctx.beginPath();
+  ctx.moveTo(corners[0].x, corners[0].y);
+  ctx.lineTo(corners[1].x, corners[1].y);
+  ctx.lineTo(corners[2].x, corners[2].y);
+  ctx.lineTo(corners[3].x, corners[3].y);
+  ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
+}
+
+/* Círculo "esfera" para copas de árvores. r é dado em unidades de tile. */
+function drawSphere(ctx, cam, cw, ch, gx, gy, gz, r, color) {
+  const p = projectPoint(gx, gy, gz);
+  const s = worldToScreen(cam, p.x, p.y, cw, ch);
+  const rr = r * (TILE_W / 2) * cam.zoom;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, rr, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = shadeColor(color, 1.18);
+  ctx.beginPath();
+  ctx.arc(s.x - rr * 0.25, s.y - rr * 0.3, rr * 0.55, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+</script>
+<script>
+/* ================= FAZENDA 3D — LÓGICA DO JOGO =================
+   Estado, grade de ocupação, economia, XP/nível, missões,
+   conquistas e salvamento. */
+
+const GRID_SIZE = 30;
+const SAVE_KEY = 'fazenda3d_save_v1';
+const START_AREA = { x0: 11, y0: 11, x1: 18, y1: 18 }; // 8x8 inicial
+
+const game = {
+  coins: 750,
+  gems: 5,
+  xp: 0,
+  level: 1,
+  farmName: 'Fazenda do Jogador',
+  ownedArea: { ...START_AREA },
+  buildings: [],          // {id, type, gx, gy, rot}
+  nextId: 1,
+  stats: {},              // contadores p/ missões e conquistas
+  missionsClaimed: [],
+  achievementsClaimed: [],
+  settings: { sound: true, music: false, quality: 'alta', language: 'pt-BR' },
+  landExpansions: 0
+};
+
+/* ---------- Grade de ocupação ---------- */
+const occupancy = new Array(GRID_SIZE * GRID_SIZE).fill(null);
+
+function occIndex(x, y) { return y * GRID_SIZE + x; }
+
+function inOwnedArea(x, y) {
+  const a = game.ownedArea;
+  return x >= a.x0 && x <= a.x1 && y >= a.y0 && y <= a.y1;
+}
+
+function inBounds(x, y) {
+  return x >= 0 && y >= 0 && x < GRID_SIZE && y < GRID_SIZE;
+}
+
+/* Footprint de um tipo com rotação aplicada (0 ou 1 → 90°). */
+function footprintOf(type, rot) {
+  const b = BUILDINGS[type];
+  return (rot % 2 === 0) ? { w: b.w, d: b.d } : { w: b.d, d: b.w };
+}
+
+/* Verifica se um prédio cabe em (gx,gy) com rotação dada.
+   ignoreId permite ignorar o próprio prédio (modo mover). */
+function canPlace(type, gx, gy, rot, ignoreId) {
+  const f = footprintOf(type, rot);
+  for (let x = gx; x < gx + f.w; x++) {
+    for (let y = gy; y < gy + f.d; y++) {
+      if (!inBounds(x, y) || !inOwnedArea(x, y)) return false;
+      const occ = occupancy[occIndex(x, y)];
+      if (occ && occ.id !== ignoreId) return false;
+    }
+  }
+  return true;
+}
+
+function markOccupancy(building, value) {
+  const f = footprintOf(building.type, building.rot);
+  for (let x = building.gx; x < building.gx + f.w; x++) {
+    for (let y = building.gy; y < building.gy + f.d; y++) {
+      occupancy[occIndex(x, y)] = value ? building : null;
+    }
+  }
+}
+
+function buildingAt(x, y) {
+  if (!inBounds(x, y)) return null;
+  return occupancy[occIndex(x, y)];
+}
+
+/* ---------- Economia ---------- */
+function addCoins(n) {
+  game.coins = Math.max(0, game.coins + n);
+  game.stats.peak_coins = Math.max(game.stats.peak_coins || 0, game.coins);
+  uiDirty.coins = true;
+}
+
+function addGems(n) { game.gems = Math.max(0, game.gems + n); uiDirty.gems = true; }
+
+function addXp(n) {
+  game.xp += n;
+  uiDirty.xp = true;
+  while (game.xp >= xpForLevel(game.level)) {
+    game.xp -= xpForLevel(game.level);
+    game.level++;
+    game.stats.level = game.level;
+    showToast(t('toast.levelUp', { n: game.level }));
+    playSound('level');
+  }
+}
+
+/* ---------- Construções ---------- */
+function placeBuilding(type, gx, gy, rot, free) {
+  const def = BUILDINGS[type];
+  if (!canPlace(type, gx, gy, rot)) return null;
+  if (!free) {
+    if (game.coins < def.price) { showToast(t('toast.noCoins')); return null; }
+    addCoins(-def.price);
+  }
+  const building = {
+    id: game.nextId++,
+    type, gx, gy, rot: rot || 0
+  };
+  game.buildings.push(building);
+  markOccupancy(building, true);
+
+  game.stats.built_any = (game.stats.built_any || 0) + 1;
+  game.stats['built_' + type] = (game.stats['built_' + type] || 0) + 1;
+  if (!free) addXp(Math.max(5, Math.round(def.price / 10)));
+  playSound('place');
+  return building;
+}
+
+function removeBuilding(id) {
+  const idx = game.buildings.findIndex(b => b.id === id);
+  if (idx === -1) return null;
+  const b = game.buildings[idx];
+  markOccupancy(b, false);
+  game.buildings.splice(idx, 1);
+  const def = BUILDINGS[b.type];
+  const refund = Math.floor(def.price * def.refund);
+  if (refund > 0) addCoins(refund);
+  playSound('remove');
+  return { refund, def };
+}
+
+function moveBuilding(id, gx, gy, rot) {
+  const b = game.buildings.find(b => b.id === id);
+  if (!b) return false;
+  const newRot = (rot === undefined) ? b.rot : rot;
+  if (!canPlace(b.type, gx, gy, newRot, id)) return false;
+  markOccupancy(b, false);
+  b.gx = gx; b.gy = gy; b.rot = newRot;
+  markOccupancy(b, true);
+  playSound('place');
+  return true;
+}
+
+function rotateBuilding(id) {
+  const b = game.buildings.find(b => b.id === id);
+  if (!b) return false;
+  const newRot = (b.rot + 1) % 4;
+  if (!canPlace(b.type, b.gx, b.gy, newRot, id)) return false;
+  markOccupancy(b, false);
+  b.rot = newRot;
+  markOccupancy(b, true);
+  playSound('rotate');
+  return true;
+}
+
+/* ---------- Expansão de terreno ---------- */
+function expansionPrice() {
+  return Math.round(LAND_EXPANSION.basePrice * Math.pow(LAND_EXPANSION.priceGrowth, game.landExpansions));
+}
+
+function canExpand() {
+  return game.landExpansions < LAND_EXPANSION.maxExpansions;
+}
+
+function buyLand() {
+  if (!canExpand()) { showToast(t('toast.expandLimit')); return false; }
+  const price = expansionPrice();
+  if (game.coins < price) { showToast(t('toast.noCoins')); return false; }
+  addCoins(-price);
+  game.landExpansions++;
+  game.stats.land_expansions = game.landExpansions;
+
+  // adiciona um anel de 2 tiles ao redor da área atual
+  const a = game.ownedArea;
+  const ring = 2;
+  a.x0 = Math.max(0, a.x0 - ring);
+  a.y0 = Math.max(0, a.y0 - ring);
+  a.x1 = Math.min(GRID_SIZE - 1, a.x1 + ring);
+  a.y1 = Math.min(GRID_SIZE - 1, a.y1 + ring);
+
+  addXp(60);
+  playSound('level');
+  showToast(t('toast.landExpanded', { w: a.x1 - a.x0 + 1, h: a.y1 - a.y0 + 1 }));
+  return true;
+}
+
+/* ---------- Missões e conquistas ---------- */
+function missionProgress(m) {
+  return Math.min(m.target, game.stats[m.stat] || 0);
+}
+
+function claimMission(m) {
+  if (game.missionsClaimed.includes(m.id)) return false;
+  if (missionProgress(m) < m.target) return false;
+  game.missionsClaimed.push(m.id);
+  addCoins(m.rewardCoins);
+  addXp(m.rewardXp);
+  playSound('level');
+  showToast(t('toast.missionDone', { c: m.rewardCoins, x: m.rewardXp }));
+  return true;
+}
+
+function achievementProgress(a) {
+  return Math.min(a.target, game.stats[a.stat] || 0);
+}
+
+function claimAchievement(a) {
+  if (game.achievementsClaimed.includes(a.id)) return false;
+  if (achievementProgress(a) < a.target) return false;
+  game.achievementsClaimed.push(a.id);
+  addCoins(a.rewardCoins);
+  playSound('level');
+  showToast(t('toast.achievementDone', { c: a.rewardCoins }));
+  return true;
+}
+
+function autoClaimReady() {
+  for (const m of MISSIONS) {
+    if (!game.missionsClaimed.includes(m.id) && missionProgress(m) >= m.target) claimMission(m);
+  }
+  for (const a of ACHIEVEMENTS) {
+    if (!game.achievementsClaimed.includes(a.id) && achievementProgress(a) >= a.target) claimAchievement(a);
+  }
+}
+
+/* ---------- Salvamento ---------- */
+function saveGame(showToastMsg) {
+  try {
+    const data = {
+      coins: game.coins, gems: game.gems, xp: game.xp, level: game.level,
+      farmName: game.farmName, ownedArea: game.ownedArea,
+      buildings: game.buildings, nextId: game.nextId,
+      stats: game.stats, missionsClaimed: game.missionsClaimed,
+      achievementsClaimed: game.achievementsClaimed,
+      settings: game.settings, landExpansions: game.landExpansions
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    if (showToastMsg) showToast(t('toast.saved'));
+    return true;
+  } catch (e) {
+    console.error('Falha ao salvar', e);
+    return false;
+  }
+}
+
+function loadGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    Object.assign(game, {
+      coins: data.coins ?? 750, gems: data.gems ?? 5,
+      xp: data.xp ?? 0, level: data.level ?? 1,
+      farmName: data.farmName ?? 'Fazenda do Jogador',
+      ownedArea: data.ownedArea ?? { ...START_AREA },
+      buildings: data.buildings ?? [], nextId: data.nextId ?? 1,
+      stats: data.stats ?? {}, missionsClaimed: data.missionsClaimed ?? [],
+      achievementsClaimed: data.achievementsClaimed ?? [],
+      settings: { ...game.settings, ...(data.settings ?? {}) },
+      landExpansions: data.landExpansions ?? 0
+    });
+    game.stats.level = game.level;
+    game.stats.peak_coins = Math.max(game.stats.peak_coins || 0, game.coins);
+    occupancy.fill(null);
+    for (const b of game.buildings) markOccupancy(b, true);
+    return true;
+  } catch (e) {
+    console.error('Falha ao carregar', e);
+    return false;
+  }
+}
+
+function resetGame() {
+  localStorage.removeItem(SAVE_KEY);
+  location.reload();
+}
+
+</script>
+<script>
+/* ================= FAZENDA 3D — RENDERIZAÇÃO =================
+   Desenha terreno, construções, prévia fantasma e destaques. */
+
+const COLORS = {
+  grassOwned: '#7ec850',
+  grassOwnedAlt: '#76c14a',
+  grassLocked: '#5da03f',
+  grassLockedAlt: '#57993b',
+  dirt: '#c8a061',
+  water: '#4fc3f7',
+  stone: '#9e9e9e'
+};
+
+function render(ctx, cam, cw, ch, state) {
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.fillStyle = '#6ab04a';
+  ctx.fillRect(0, 0, cw, ch);
+
+  const view = visibleGridRange(cam, cw, ch);
+
+  drawTerrain(ctx, cam, cw, ch, view);
+  drawBuildings(ctx, cam, cw, ch, state);
+  if (state.ghost) drawGhost(ctx, cam, cw, ch, state);
+  if (state.highlightTile) drawTileHighlight(ctx, cam, cw, ch, state.highlightTile);
+}
+
+/* Faixa de grid visível (culling simples). */
+function visibleGridRange(cam, cw, ch) {
+  const corners = [
+    screenToWorld(cam, 0, 0, cw, ch),
+    screenToWorld(cam, cw, 0, cw, ch),
+    screenToWorld(cam, 0, ch, cw, ch),
+    screenToWorld(cam, cw, ch, cw, ch)
+  ].map(w => screenToGrid(w.x, w.y));
+  return {
+    x0: Math.max(0, Math.min(...corners.map(c => c.gx)) - 2),
+    y0: Math.max(0, Math.min(...corners.map(c => c.gy)) - 2),
+    x1: Math.min(GRID_SIZE, Math.max(...corners.map(c => c.gx)) + 3),
+    y1: Math.min(GRID_SIZE, Math.max(...corners.map(c => c.gy)) + 3)
+  };
+}
+
+function drawTerrain(ctx, cam, cw, ch, view) {
+  const a = game.ownedArea;
+  for (let x = view.x0; x < view.x1; x++) {
+    for (let y = view.y0; y < view.y1; y++) {
+      const corners = tileCorners(cam, cw, ch, x, y);
+      const owned = inOwnedArea(x, y);
+      const alt = (x + y) % 2 === 0;
+      let fill = owned
+        ? (alt ? COLORS.grassOwned : COLORS.grassOwnedAlt)
+        : (alt ? COLORS.grassLocked : COLORS.grassLockedAlt);
+      drawTileDiamond(ctx, corners, fill, 'rgba(0,0,0,0.06)');
+    }
+  }
+  // borda da área possuída
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 2;
+  const pA = [
+    projectPoint(a.x0, a.y0, 0), projectPoint(a.x1 + 1, a.y0, 0),
+    projectPoint(a.x1 + 1, a.y1 + 1, 0), projectPoint(a.x0, a.y1 + 1, 0)
+  ].map(pt => worldToScreen(cam, pt.x, pt.y, cw, ch));
+  ctx.beginPath();
+  ctx.moveTo(pA[0].x, pA[0].y); ctx.lineTo(pA[1].x, pA[1].y);
+  ctx.lineTo(pA[2].x, pA[2].y); ctx.lineTo(pA[3].x, pA[3].y);
+  ctx.closePath(); ctx.stroke();
+}
+
+function drawTileHighlight(ctx, cam, cw, ch, tile) {
+  const corners = tileCorners(cam, cw, ch, tile.gx, tile.gy);
+  drawTileDiamond(ctx, corners, 'rgba(255,235,59,0.35)', 'rgba(255,235,59,0.9)');
+}
+
+/* ---------- Desenho das construções ---------- */
+function drawBuildings(ctx, cam, cw, ch, state) {
+  const sorted = [...game.buildings].sort((a, b) =>
+    (a.gx + a.gy + footprintOf(a.type, a.rot).w + footprintOf(a.type, a.rot).d) -
+    (b.gx + b.gy + footprintOf(b.type, b.rot).w + footprintOf(b.type, b.rot).d));
+
+  let selected = null;
+  for (const b of sorted) {
+    if (state.mode === 'move' && state.moveId === b.id) { selected = b; continue; }
+    // no modo girar o fantasma já mostra a rotação; não desenhar a original por cima
+    if (state.mode === 'rotate' && state.rotateId === b.id) continue;
+    drawBuilding(ctx, cam, cw, ch, b);
+  }
+  if (selected) drawBuilding(ctx, cam, cw, ch, selected, true);
+}
+
+function drawBuilding(ctx, cam, cw, ch, b, selected) {
+  const def = BUILDINGS[b.type];
+  const f = footprintOf(b.type, b.rot);
+  const gx = b.gx, gy = b.gy, w = f.w, d = f.d;
+  const q = game.settings.quality;
+
+  if (selected) {
+    // destaque de seleção
+    const p = [
+      projectPoint(gx, gy, 0), projectPoint(gx + w, gy, 0),
+      projectPoint(gx + w, gy + d, 0), projectPoint(gx, gy + d, 0)
+    ].map(pt => worldToScreen(cam, pt.x, pt.y, cw, ch));
+    ctx.fillStyle = 'rgba(255,235,59,0.35)';
+    ctx.beginPath();
+    ctx.moveTo(p[0].x, p[0].y); ctx.lineTo(p[1].x, p[1].y);
+    ctx.lineTo(p[2].x, p[2].y); ctx.lineTo(p[3].x, p[3].y);
+    ctx.closePath(); ctx.fill();
+  }
+
+  switch (b.type) {
+    case 'house':   drawHouse(ctx, cam, cw, ch, gx, gy, w, d, q); break;
+    case 'barn':    drawBarn(ctx, cam, cw, ch, gx, gy, w, d, q); break;
+    case 'stable':  drawStable(ctx, cam, cw, ch, gx, gy, w, d, q); break;
+    case 'coop':    drawCoop(ctx, cam, cw, ch, gx, gy, w, d, q); break;
+    case 'well':    drawWell(ctx, cam, cw, ch, gx, gy, q); break;
+    case 'stall':   drawStall(ctx, cam, cw, ch, gx, gy, w, d, q); break;
+    case 'fence':   drawFence(ctx, cam, cw, ch, gx, gy, b.rot, q); break;
+    case 'tree':    drawTree(ctx, cam, cw, ch, gx, gy, q); break;
+    case 'flowers': drawFlowers(ctx, cam, cw, ch, gx, gy); break;
+    case 'path':    drawPath(ctx, cam, cw, ch, gx, gy); break;
+  }
+}
+
+/* --- Casa: paredes brancas, telhado vermelho, porta e janelas --- */
+function drawHouse(ctx, cam, cw, ch, gx, gy, w, d, q) {
+  const wallH = 0.9;
+  drawPrism(ctx, cam, cw, ch, gx + 0.15, gy + 0.15, w - 0.3, d - 0.3, wallH, '#f5f0e6');
+  drawGableRoof(ctx, cam, cw, ch, gx + 0.05, gy + 0.05, w - 0.1, d - 0.1, wallH, 0.75, '#d84343', 'x');
+  // porta (face direita)
+  const door = [projectPoint(gx + w - 0.15, gy + d * 0.45, 0), projectPoint(gx + w - 0.15, gy + d * 0.45 + 0.5, 0),
+                projectPoint(gx + w - 0.15, gy + d * 0.45 + 0.5, 0.55), projectPoint(gx + w - 0.15, gy + d * 0.45, 0.55)]
+    .map(p => worldToScreen(cam, p.x, p.y, cw, ch));
+  ctx.fillStyle = '#8b5a2b';
+  ctx.beginPath();
+  ctx.moveTo(door[0].x, door[0].y); ctx.lineTo(door[1].x, door[1].y);
+  ctx.lineTo(door[2].x, door[2].y); ctx.lineTo(door[3].x, door[3].y);
+  ctx.closePath(); ctx.fill();
+  // janelas (face esquerda)
+  ctx.fillStyle = '#7ec8e3';
+  for (const wy of [0.2, 0.65]) {
+    const win = [projectPoint(gx + w * wy, gy + d - 0.15, 0.35), projectPoint(gx + w * wy + 0.4, gy + d - 0.15, 0.35),
+                 projectPoint(gx + w * wy + 0.4, gy + d - 0.15, 0.7), projectPoint(gx + w * wy, gy + d - 0.15, 0.7)]
+      .map(p => worldToScreen(cam, p.x, p.y, cw, ch));
+    ctx.beginPath();
+    ctx.moveTo(win[0].x, win[0].y); ctx.lineTo(win[1].x, win[1].y);
+    ctx.lineTo(win[2].x, win[2].y); ctx.lineTo(win[3].x, win[3].y);
+    ctx.closePath(); ctx.fill();
+  }
+}
+
+/* --- Celeiro: vermelho com detalhes brancos --- */
+function drawBarn(ctx, cam, cw, ch, gx, gy, w, d, q) {
+  drawPrism(ctx, cam, cw, ch, gx + 0.1, gy + 0.1, w - 0.2, d - 0.2, 0.8, '#c62828');
+  drawGableRoof(ctx, cam, cw, ch, gx, gy, w, d, 0.8, 0.7, '#8d6e63', 'x');
+  // portão branco em X
+  const door = [projectPoint(gx + w / 2 - 0.35, gy + d - 0.12, 0), projectPoint(gx + w / 2 + 0.35, gy + d - 0.12, 0),
+                projectPoint(gx + w / 2 + 0.35, gy + d - 0.12, 0.6), projectPoint(gx + w / 2 - 0.35, gy + d - 0.12, 0.6)]
+    .map(p => worldToScreen(cam, p.x, p.y, cw, ch));
+  ctx.fillStyle = '#efebe9';
+  ctx.beginPath();
+  ctx.moveTo(door[0].x, door[0].y); ctx.lineTo(door[1].x, door[1].y);
+  ctx.lineTo(door[2].x, door[2].y); ctx.lineTo(door[3].x, door[3].y);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#c62828'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(door[0].x, door[0].y); ctx.lineTo(door[2].x, door[2].y);
+  ctx.moveTo(door[1].x, door[1].y); ctx.lineTo(door[3].x, door[3].y);
+  ctx.stroke();
+}
+
+/* --- Estábulo: marrom com telhado vermelho --- */
+function drawStable(ctx, cam, cw, ch, gx, gy, w, d, q) {
+  drawPrism(ctx, cam, cw, ch, gx + 0.1, gy + 0.1, w - 0.2, d - 0.2, 0.7, '#a1887f');
+  drawGableRoof(ctx, cam, cw, ch, gx, gy, w, d, 0.7, 0.55, '#d84343', 'x');
+  // cerca do curral frontal
+  drawPrism(ctx, cam, cw, ch, gx + 0.2, gy + d - 0.1, w - 0.4, 0.08, 0.3, '#8d6e63');
+}
+
+/* --- Galinheiro: pequeno, marrom com telhado vermelho --- */
+function drawCoop(ctx, cam, cw, ch, gx, gy, w, d, q) {
+  drawPrism(ctx, cam, cw, ch, gx + 0.15, gy + 0.15, w - 0.3, d - 0.3, 0.55, '#bcaaa4');
+  drawGableRoof(ctx, cam, cw, ch, gx + 0.05, gy + 0.05, w - 0.1, d - 0.1, 0.55, 0.45, '#e57373', 'x');
+  // rampinha
+  drawPrism(ctx, cam, cw, ch, gx + w / 2 - 0.1, gy + d - 0.05, 0.2, 0.3, 0.08, '#8d6e63');
+}
+
+/* --- Poço: base de pedra + água animada + suporte --- */
+function drawWell(ctx, cam, cw, ch, gx, gy, q) {
+  drawPrism(ctx, cam, cw, ch, gx + 0.15, gy + 0.15, 0.7, 0.7, 0.35, '#9e9e9e');
+  // água (anima com o tempo)
+  const t = performance.now() / 1000;
+  const lvl = 0.3 + Math.sin(t * 2) * 0.03;
+  const water = [projectPoint(gx + 0.25, gy + 0.25, lvl), projectPoint(gx + 0.75, gy + 0.25, lvl),
+                 projectPoint(gx + 0.75, gy + 0.75, lvl), projectPoint(gx + 0.25, gy + 0.75, lvl)]
+    .map(p => worldToScreen(cam, p.x, p.y, cw, ch));
+  ctx.fillStyle = COLORS.water;
+  ctx.beginPath();
+  ctx.moveTo(water[0].x, water[0].y); ctx.lineTo(water[1].x, water[1].y);
+  ctx.lineTo(water[2].x, water[2].y); ctx.lineTo(water[3].x, water[3].y);
+  ctx.closePath(); ctx.fill();
+  // estrutura de madeira + telhado
+  drawPrism(ctx, cam, cw, ch, gx + 0.2, gy + 0.2, 0.08, 0.08, 0.85, '#6d4c41');
+  drawPrism(ctx, cam, cw, ch, gx + 0.72, gy + 0.2, 0.08, 0.08, 0.85, '#6d4c41');
+  drawGableRoof(ctx, cam, cw, ch, gx + 0.05, gy + 0.05, 0.9, 0.9, 0.85, 0.3, '#c62828', 'x');
+}
+
+/* --- Barraca de vendas: balcão + toldo listrado --- */
+function drawStall(ctx, cam, cw, ch, gx, gy, w, d, q) {
+  drawPrism(ctx, cam, cw, ch, gx + 0.1, gy + 0.2, w - 0.2, d - 0.35, 0.5, '#d7a86e');
+  // pernas do toldo
+  drawPrism(ctx, cam, cw, ch, gx + 0.15, gy + 0.15, 0.07, 0.07, 1.0, '#8d6e63');
+  drawPrism(ctx, cam, cw, ch, gx + w - 0.22, gy + 0.15, 0.07, 0.07, 1.0, '#8d6e63');
+  // toldo listrado
+  const stripes = 4;
+  for (let i = 0; i < stripes; i++) {
+    const x0 = gx + 0.05 + (w - 0.1) * (i / stripes);
+    const x1 = gx + 0.05 + (w - 0.1) * ((i + 1) / stripes);
+    const c = i % 2 === 0 ? '#e53935' : '#ffffff';
+    const quad = [projectPoint(x0, gy + 0.05, 1.0), projectPoint(x1, gy + 0.05, 1.0),
+                  projectPoint(x1, gy + d - 0.05, 0.85), projectPoint(x0, gy + d - 0.05, 0.85)]
+      .map(p => worldToScreen(cam, p.x, p.y, cw, ch));
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.moveTo(quad[0].x, quad[0].y); ctx.lineTo(quad[1].x, quad[1].y);
+    ctx.lineTo(quad[2].x, quad[2].y); ctx.lineTo(quad[3].x, quad[3].y);
+    ctx.closePath(); ctx.fill();
+  }
+}
+
+/* --- Cerca: poste + travessas orientadas pela rotação --- */
+function drawFence(ctx, cam, cw, ch, gx, gy, rot, q) {
+  const horizontal = rot % 2 === 0;
+  drawPrism(ctx, cam, cw, ch, gx + 0.42, gy + 0.42, 0.16, 0.16, 0.55, '#a1887f');
+  if (horizontal) {
+    drawPrism(ctx, cam, cw, ch, gx + 0.05, gy + 0.44, 0.9, 0.08, 0.12, '#8d6e63');
+    drawPrism(ctx, cam, cw, ch, gx + 0.05, gy + 0.44, 0.9, 0.08, 0.34, '#8d6e63');
+  } else {
+    drawPrism(ctx, cam, cw, ch, gx + 0.44, gy + 0.05, 0.08, 0.9, 0.12, '#8d6e63');
+    drawPrism(ctx, cam, cw, ch, gx + 0.44, gy + 0.05, 0.08, 0.9, 0.34, '#8d6e63');
+  }
+}
+
+/* --- Árvore: tronco + copa em esferas --- */
+function drawTree(ctx, cam, cw, ch, gx, gy, q) {
+  drawPrism(ctx, cam, cw, ch, gx + 0.42, gy + 0.42, 0.16, 0.16, 0.5, '#795548');
+  drawSphere(ctx, cam, cw, ch, gx + 0.5, gy + 0.5, 0.9, 0.5, '#43a047');
+  if (q !== 'baixa') {
+    drawSphere(ctx, cam, cw, ch, gx + 0.32, gy + 0.45, 0.68, 0.34, '#4caf50');
+    drawSphere(ctx, cam, cw, ch, gx + 0.66, gy + 0.6, 0.72, 0.3, '#388e3c');
+  }
+}
+
+function drawFlowers(ctx, cam, cw, ch, gx, gy) {
+  drawPrism(ctx, cam, cw, ch, gx + 0.15, gy + 0.15, 0.7, 0.7, 0.12, '#6d4c41');
+  const colors = ['#e91e63', '#ffeb3b', '#9c27b0', '#ff5722'];
+  const t = performance.now() / 600;
+  for (let i = 0; i < 4; i++) {
+    const fx = gx + 0.3 + (i % 2) * 0.4;
+    const fy = gy + 0.3 + Math.floor(i / 2) * 0.4;
+    const sway = Math.sin(t + i) * 0.02;
+    drawSphere(ctx, cam, cw, ch, fx + sway, fy, 0.26, 0.13, colors[i]);
+  }
+}
+
+function drawPath(ctx, cam, cw, ch, gx, gy) {
+  const corners = tileCorners(cam, cw, ch, gx, gy);
+  drawTileDiamond(ctx, corners, COLORS.stone, 'rgba(0,0,0,0.15)');
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  const mid = [projectPoint(gx + 0.35, gy + 0.35, 0), projectPoint(gx + 0.6, gy + 0.5, 0)]
+    .map(p => worldToScreen(cam, p.x, p.y, cw, ch));
+  ctx.beginPath(); ctx.arc(mid[0].x, mid[0].y, 4 * cam.zoom, 0, Math.PI * 2); ctx.fill();
+}
+
+/* ---------- Prévia fantasma (construir / mover / girar) ---------- */
+function drawGhost(ctx, cam, cw, ch, state) {
+  const g = state.ghost;
+  const valid = g.valid;
+  const f = footprintOf(g.type, g.rot);
+
+  // losangos do footprint
+  for (let x = g.gx; x < g.gx + f.w; x++) {
+    for (let y = g.gy; y < g.gy + f.d; y++) {
+      const corners = tileCorners(cam, cw, ch, x, y);
+      drawTileDiamond(ctx, corners,
+        valid ? 'rgba(76,175,80,0.45)' : 'rgba(229,57,53,0.45)',
+        valid ? 'rgba(46,125,50,0.9)' : 'rgba(183,28,28,0.9)');
+    }
+  }
+
+  if (!valid) return;
+
+  // desenho semitransparente da construção
+  const fake = { id: -1, type: g.type, gx: g.gx, gy: g.gy, rot: g.rot };
+  ctx.globalAlpha = 0.65;
+  drawBuilding(ctx, cam, cw, ch, fake, false);
+  ctx.globalAlpha = 1;
+}
+
+</script>
+<script>
+/* ================= FAZENDA 3D — INTERFACE (DOM) =================
+   HUD, painéis, modais, toasts, sons, música e i18n. */
+
+const uiDirty = { coins: true, gems: true, xp: true };
+
+const $ = id => document.getElementById(id);
+
+/* ---------- Internacionalização ---------- */
+const I18N = {
+  'pt-BR': {
+    'menu.missions': 'Missões', 'menu.shop': 'Loja',
+    'menu.achievements': 'Conquistas', 'menu.friends': 'Amigos',
+    'build.build': 'Construir', 'build.move': 'Mover', 'build.remove': 'Remover',
+    'build.rotate': 'Girar', 'build.buy': 'Comprar',
+    'modal.shop': '🏪 Loja da Fazenda', 'modal.missions': '📋 Missões',
+    'modal.achievements': '🏆 Conquistas', 'modal.friends': '👥 Amigos',
+    'modal.settings': '⚙️ Configurações', 'modal.buy': '🛒 Comprar',
+    'modal.coins': '🪙 Loja de Moedas', 'modal.gems': '💎 Loja de Diamantes',
+    'settings.sound': '🔊 Som', 'settings.music': '🎵 Música',
+    'settings.quality': '✨ Qualidade gráfica', 'settings.language': '🌐 Idioma',
+    'settings.saveNow': '💾 Salvar progresso agora',
+    'settings.reset': '🗑️ Reiniciar fazenda (apaga tudo)',
+    'settings.resetConfirm': 'Tem certeza? Todo o progresso será PERDIDO para sempre.',
+    'q.baixa': 'baixa', 'q.média': 'média', 'q.alta': 'alta',
+    'cat.construcoes': 'Construções', 'cat.decoracoes': 'Decorações',
+    'cat.cercas': 'Cercas', 'cat.arvores': 'Árvores',
+    'shop.select': 'Selecionar', 'shop.noCoins': 'Sem moedas 🪙',
+    'shop.locked': '🔒 Requer nível {n}', 'shop.expansion': 'Expansão de Terreno',
+    'shop.expansionDesc': '+2 tiles em toda a borda da fazenda',
+    'shop.buyExpansion': 'Comprar expansão', 'shop.unavailable': 'Indisponível',
+    'shop.hint': 'Para construir estruturas, use o botão 🪧 Construir ou a 🏪 Loja.',
+    'confirm.build': '{icon} {name} — 🪙 {price}',
+    'confirm.move': '✥ Mover para esta posição (grátis)',
+    'confirm.rotate': '🔄 Girar 90°?',
+    'dialog.cancel': 'Cancelar', 'dialog.ok': 'Confirmar',
+    'dialog.removeText': 'Remover {icon} {name}? Você receberá 🪙 {refund} de volta.',
+    'coinshop.body': 'A loja de moedas com compras reais será integrada na fase de monetização. Por enquanto, ganhe moedas vendendo produtos e concluindo missões!',
+    'coinshop.daily': '🎁 Receber 100 moedas de boas-vindas (1x por dia)',
+    'gemshop.body': 'Diamantes são a moeda premium: aceleram construções e produções e desbloqueiam itens especiais. A loja de compra será integrada na fase de monetização.',
+    'friends.placeholder': '👥 O sistema de amigos (visitar fazendas, trocar presentes e produtos) será ativado na fase multiplayer. Sua fazenda está pronta para recebê-los!',
+    'toast.welcome': '🌾 Bem-vindo à sua fazenda! Use 🪧 Construir para começar.',
+    'toast.buildHint': '{icon} Escolha o local e clique para confirmar (R gira · Esc cancela)',
+    'toast.invalid': '🚫 Local inválido! Escolha uma área livre dentro do terreno.',
+    'toast.noCoins': '🪙 Moedas insuficientes!',
+    'toast.built': '{icon} {name} construído!',
+    'toast.moved': '✥ Construção movida!',
+    'toast.rotated': '🔄 Construção girada!',
+    'toast.rotateNoSpace': '🚫 Sem espaço para girar aqui.',
+    'toast.removed': '🗑️ Removido! +🪙 {refund}',
+    'toast.removeHint': 'Clique em uma construção para removê-la.',
+    'toast.moveHint': '✥ Clique em uma construção e depois no novo local.',
+    'toast.moveSelect': 'Agora clique no novo local (R gira · Esc cancela).',
+    'toast.rotateHint': '🔄 Clique em uma construção para visualizar a rotação.',
+    'toast.noRotate': 'Esta construção não precisa girar.',
+    'toast.clickBuilding': 'Clique em uma construção para mover.',
+    'toast.missionDone': '📋 Missão concluída! +{c} 🪙 +{x} XP',
+    'toast.achievementDone': '🏆 Conquista desbloqueada! +{c} 🪙',
+    'toast.levelUp': '⭐ Nível {n} alcançado! Novos itens desbloqueados.',
+    'toast.saved': '💾 Progresso salvo!',
+    'toast.landExpanded': '🌍 Terreno ampliado! Área agora: {w}×{h}',
+    'toast.expandLimit': '🚫 Limite de expansões atingido!',
+    'toast.dailyWait': '⏰ Volte amanhã para a recompensa diária!',
+    'toast.dailyDone': '🪙 +100 moedas!',
+    'toast.highlight': '{icon} {name}',
+    'b_house': 'Casa Principal', 'b_house_desc': 'Centro administrativo da fazenda.',
+    'b_barn': 'Celeiro', 'b_barn_desc': 'Armazena produtos agrícolas.',
+    'b_stable': 'Estábulo', 'b_stable_desc': 'Abriga vacas e produz leite (fase 2).',
+    'b_coop': 'Galinheiro', 'b_coop_desc': 'Abriga galinhas e produz ovos (fase 2).',
+    'b_well': 'Poço', 'b_well_desc': 'Fornece água para irrigação (fase 2).',
+    'b_stall': 'Barraca de Vendas', 'b_stall_desc': 'Ponto de comercialização de produtos (fase 3).',
+    'b_fence': 'Cerca', 'b_fence_desc': 'Delimita áreas e currais.',
+    'b_tree': 'Árvore', 'b_tree_desc': 'Decoração natural da fazenda.',
+    'b_flowers': 'Canteiro de Flores', 'b_flowers_desc': 'Enfeita os caminhos da fazenda.',
+    'b_path': 'Trilha de Pedra', 'b_path_desc': 'Caminho decorativo de pedras.'
+  },
+  'en-US': {
+    'menu.missions': 'Missions', 'menu.shop': 'Shop',
+    'menu.achievements': 'Achievements', 'menu.friends': 'Friends',
+    'build.build': 'Build', 'build.move': 'Move', 'build.remove': 'Remove',
+    'build.rotate': 'Rotate', 'build.buy': 'Buy',
+    'modal.shop': '🏪 Farm Shop', 'modal.missions': '📋 Missions',
+    'modal.achievements': '🏆 Achievements', 'modal.friends': '👥 Friends',
+    'modal.settings': '⚙️ Settings', 'modal.buy': '🛒 Buy',
+    'modal.coins': '🪙 Coin Shop', 'modal.gems': '💎 Diamond Shop',
+    'settings.sound': '🔊 Sound', 'settings.music': '🎵 Music',
+    'settings.quality': '✨ Graphics quality', 'settings.language': '🌐 Language',
+    'settings.saveNow': '💾 Save progress now',
+    'settings.reset': '🗑️ Reset farm (erases everything)',
+    'settings.resetConfirm': 'Are you sure? All progress will be LOST forever.',
+    'q.baixa': 'low', 'q.média': 'medium', 'q.alta': 'high',
+    'cat.construcoes': 'Buildings', 'cat.decoracoes': 'Decorations',
+    'cat.cercas': 'Fences', 'cat.arvores': 'Trees',
+    'shop.select': 'Select', 'shop.noCoins': 'Not enough coins 🪙',
+    'shop.locked': '🔒 Requires level {n}', 'shop.expansion': 'Land Expansion',
+    'shop.expansionDesc': '+2 tiles along the entire farm border',
+    'shop.buyExpansion': 'Buy expansion', 'shop.unavailable': 'Unavailable',
+    'shop.hint': 'To build structures, use the 🪧 Build button or the 🏪 Shop.',
+    'confirm.build': '{icon} {name} — 🪙 {price}',
+    'confirm.move': '✥ Move to this spot (free)',
+    'confirm.rotate': '🔄 Rotate 90°?',
+    'dialog.cancel': 'Cancel', 'dialog.ok': 'Confirm',
+    'dialog.removeText': 'Remove {icon} {name}? You will get 🪙 {refund} back.',
+    'coinshop.body': 'The real-money coin shop will be integrated in the monetization phase. For now, earn coins by selling products and completing missions!',
+    'coinshop.daily': '🎁 Claim 100 welcome coins (once a day)',
+    'gemshop.body': 'Diamonds are the premium currency: they speed up construction and production and unlock special items. The purchase shop will be integrated in the monetization phase.',
+    'friends.placeholder': '👥 The friends system (visit farms, trade gifts and products) will be enabled in the multiplayer phase. Your farm is ready to receive them!',
+    'toast.welcome': '🌾 Welcome to your farm! Use 🪧 Build to get started.',
+    'toast.buildHint': '{icon} Choose a spot and click to confirm (R rotates · Esc cancels)',
+    'toast.invalid': '🚫 Invalid spot! Choose a free area inside your land.',
+    'toast.noCoins': '🪙 Not enough coins!',
+    'toast.built': '{icon} {name} built!',
+    'toast.moved': '✥ Building moved!',
+    'toast.rotated': '🔄 Building rotated!',
+    'toast.rotateNoSpace': '🚫 No room to rotate here.',
+    'toast.removed': '🗑️ Removed! +🪙 {refund}',
+    'toast.removeHint': 'Click a building to remove it.',
+    'toast.moveHint': '✥ Click a building, then the new spot.',
+    'toast.moveSelect': 'Now click the new spot (R rotates · Esc cancels).',
+    'toast.rotateHint': '🔄 Click a building to preview the rotation.',
+    'toast.noRotate': 'This building does not need rotating.',
+    'toast.clickBuilding': 'Click a building to move it.',
+    'toast.missionDone': '📋 Mission complete! +{c} 🪙 +{x} XP',
+    'toast.achievementDone': '🏆 Achievement unlocked! +{c} 🪙',
+    'toast.levelUp': '⭐ Level {n} reached! New items unlocked.',
+    'toast.saved': '💾 Progress saved!',
+    'toast.landExpanded': '🌍 Land expanded! Area is now {w}×{h}',
+    'toast.expandLimit': '🚫 Expansion limit reached!',
+    'toast.dailyWait': '⏰ Come back tomorrow for the daily reward!',
+    'toast.dailyDone': '🪙 +100 coins!',
+    'toast.highlight': '{icon} {name}',
+    'b_house': 'Main House', 'b_house_desc': 'Administrative center of the farm.',
+    'b_barn': 'Barn', 'b_barn_desc': 'Stores agricultural products.',
+    'b_stable': 'Stable', 'b_stable_desc': 'Houses cows and produces milk (phase 2).',
+    'b_coop': 'Chicken Coop', 'b_coop_desc': 'Houses chickens and produces eggs (phase 2).',
+    'b_well': 'Well', 'b_well_desc': 'Provides water for irrigation (phase 2).',
+    'b_stall': 'Market Stall', 'b_stall_desc': 'Selling point for products (phase 3).',
+    'b_fence': 'Fence', 'b_fence_desc': 'Delimits areas and pens.',
+    'b_tree': 'Tree', 'b_tree_desc': 'Natural farm decoration.',
+    'b_flowers': 'Flower Bed', 'b_flowers_desc': 'Beautifies the farm paths.',
+    'b_path': 'Stone Path', 'b_path_desc': 'Decorative stone walkway.'
+  }
+};
+
+let LANG = 'pt-BR';
+
+function t(key, params) {
+  let s = (I18N[LANG] && I18N[LANG][key]) || I18N['pt-BR'][key] || key;
+  if (params) for (const k in params) s = s.replaceAll('{' + k + '}', params[k]);
+  return s;
+}
+
+function applyLang() {
+  LANG = game.settings.language || 'pt-BR';
+  document.documentElement.lang = LANG;
+  for (const el of document.querySelectorAll('[data-i18n]')) {
+    el.textContent = t(el.dataset.i18n);
+  }
+}
+
+/* ---------- Sons (WebAudio, sem arquivos externos) ---------- */
+let audioCtx = null;
+
+function getAudioCtx() {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playSound(kind) {
+  if (!game.settings.sound) return;
+  try {
+    const ac = getAudioCtx();
+    const notes = {
+      click: [660, 0.05], place: [520, 0.12], remove: [220, 0.15],
+      rotate: [440, 0.08], level: [784, 0.2], error: [180, 0.18]
+    };
+    const [freq, dur] = notes[kind] || notes.click;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.12, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+    osc.connect(gain); gain.connect(ac.destination);
+    osc.start(); osc.stop(ac.currentTime + dur);
+  } catch (e) { /* áudio indisponível */ }
+}
+
+/* ---------- Música ambiente (gerada, sem arquivos) ---------- */
+const MELODY = [523.25, 659.25, 783.99, 659.25, 587.33, 783.99, 880, 783.99,
+                659.25, 523.25, 587.33, 659.25, 523.25, 392, 440, 523.25];
+const BASS = [130.81, 130.81, 174.61, 174.61, 196, 196, 130.81, 130.81];
+let musicTimer = null;
+let musicStep = 0;
+
+function musicNote(freq, dur, vol, type) {
+  const ac = getAudioCtx();
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, ac.currentTime);
+  gain.gain.linearRampToValueAtTime(vol, ac.currentTime + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+  osc.connect(gain); gain.connect(ac.destination);
+  osc.start(); osc.stop(ac.currentTime + dur);
+}
+
+function startMusic() {
+  if (musicTimer) return;
+  try {
+    getAudioCtx();
+    musicTimer = setInterval(() => {
+      if (!game.settings.music) { stopMusic(); return; }
+      musicNote(MELODY[musicStep % MELODY.length], 0.9, 0.045, 'triangle');
+      if (musicStep % 2 === 0) {
+        musicNote(BASS[(musicStep / 2) % BASS.length], 1.8, 0.03, 'sine');
+      }
+      musicStep++;
+    }, 450);
+  } catch (e) { /* áudio indisponível */ }
+}
+
+function stopMusic() {
+  clearInterval(musicTimer);
+  musicTimer = null;
+}
+
+/* ---------- Toast ---------- */
+let toastTimer = null;
+function showToast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  el.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.style.opacity = '0';
+    setTimeout(() => el.classList.add('hidden'), 300);
+  }, 2200);
+}
+
+/* ---------- HUD ---------- */
+function refreshHud() {
+  if (uiDirty.coins) { $('coins-value').textContent = game.coins.toLocaleString('pt-BR'); uiDirty.coins = false; }
+  if (uiDirty.gems) { $('gems-value').textContent = game.gems; uiDirty.gems = false; }
+  if (uiDirty.xp) {
+    $('level-text').textContent = 'Nível ' + game.level;
+    $('farm-name').textContent = game.farmName;
+    const need = xpForLevel(game.level);
+    $('xp-fill').style.width = Math.min(100, (game.xp / need) * 100) + '%';
+    uiDirty.xp = false;
+  }
+}
+
+/* ---------- Modais ---------- */
+function openModal(title, bodyBuilder) {
+  $('modal-title').textContent = title;
+  const body = $('modal-body');
+  body.innerHTML = '';
+  bodyBuilder(body);
+  $('modal-overlay').classList.remove('hidden');
+  playSound('click');
+}
+
+function closeModal() { $('modal-overlay').classList.add('hidden'); }
+
+/* ---------- Loja ---------- */
+let currentShopTab = 'construcoes';
+
+function openShop() {
+  openModal(t('modal.shop'), body => {
+    const tabs = document.createElement('div');
+    tabs.className = 'shop-tabs';
+    for (const cat of SHOP_CATEGORIES) {
+      const btn = document.createElement('button');
+      btn.className = 'shop-tab' + (cat.id === currentShopTab ? ' active' : '');
+      btn.textContent = t('cat.' + cat.id);
+      btn.onclick = () => { currentShopTab = cat.id; openShop(); };
+      tabs.appendChild(btn);
+    }
+    body.appendChild(tabs);
+
+    const grid = document.createElement('div');
+    grid.className = 'shop-grid';
+    for (const def of Object.values(BUILDINGS)) {
+      if (def.category !== currentShopTab) continue;
+      const locked = game.level < def.level;
+      const afford = game.coins >= def.price;
+      const item = document.createElement('div');
+      item.className = 'shop-item';
+      item.innerHTML = `
+        <div class="shop-item-icon">${def.icon}</div>
+        <div class="shop-item-name">${t('b_' + def.id)}</div>
+        <div class="shop-item-size">${def.w}×${def.d} tiles</div>
+        <div class="shop-item-desc" style="font-size:11px;color:#6d4c41;text-align:center">${t('b_' + def.id + '_desc')}</div>
+        <div class="shop-item-price">🪙 ${def.price.toLocaleString('pt-BR')}</div>
+        ${locked ? `<div class="shop-item-locked">${t('shop.locked', { n: def.level })}</div>` : ''}
+      `;
+      const buyBtn = document.createElement('button');
+      buyBtn.className = 'shop-buy-btn';
+      buyBtn.textContent = locked ? t('shop.locked', { n: def.level }) : (!afford ? t('shop.noCoins') : t('shop.select'));
+      buyBtn.disabled = locked || !afford;
+      buyBtn.onclick = () => {
+        closeModal();
+        enterBuildMode(def.id);
+      };
+      item.appendChild(buyBtn);
+      grid.appendChild(item);
+    }
+    body.appendChild(grid);
+  });
+}
+
+/* Loja de moedas (botão + das moedas) */
+function openCoinShop() {
+  openModal(t('modal.coins'), body => {
+    body.innerHTML = `<p style="text-align:center;margin-bottom:12px">${t('coinshop.body')}</p>`;
+    const btn = document.createElement('button');
+    btn.className = 'settings-btn';
+    btn.style.background = 'var(--green)';
+    btn.style.color = '#fff';
+    btn.textContent = t('coinshop.daily');
+    btn.onclick = () => {
+      const today = new Date().toDateString();
+      const last = localStorage.getItem('fazenda3d_daily');
+      if (last === today) { showToast(t('toast.dailyWait')); return; }
+      localStorage.setItem('fazenda3d_daily', today);
+      addCoins(100);
+      playSound('level');
+      showToast(t('toast.dailyDone'));
+      refreshHud();
+    };
+    body.appendChild(btn);
+  });
+}
+
+function openGemShop() {
+  openModal(t('modal.gems'), body => {
+    body.innerHTML = `<p style="text-align:center">${t('gemshop.body')}</p>`;
+  });
+}
+
+/* ---------- Missões ---------- */
+function openMissions() {
+  openModal(t('modal.missions'), body => {
+    for (const m of MISSIONS) {
+      const done = game.missionsClaimed.includes(m.id);
+      const prog = missionProgress(m);
+      const item = document.createElement('div');
+      item.className = 'mission-item' + (done ? ' mission-done' : '');
+      item.innerHTML = `
+        <div class="mission-info">
+          <div class="mission-title">${done ? '✅ ' : ''}${m.title}</div>
+          <div class="mission-desc">${m.desc}</div>
+          <div class="mission-progress">Progresso: ${prog}/${m.target}</div>
+        </div>
+        <div class="mission-reward">🪙 ${m.rewardCoins}<br>⭐ ${m.rewardXp} XP</div>
+      `;
+      body.appendChild(item);
+    }
+  });
+}
+
+/* ---------- Conquistas ---------- */
+function openAchievements() {
+  openModal(t('modal.achievements'), body => {
+    for (const a of ACHIEVEMENTS) {
+      const done = game.achievementsClaimed.includes(a.id);
+      const prog = achievementProgress(a);
+      const item = document.createElement('div');
+      item.className = 'achievement-item' + (done ? ' achievement-done' : '');
+      item.innerHTML = `
+        <div class="achievement-info">
+          <div class="achievement-title">${done ? '🏆 ' : '🔒 '}${a.title}</div>
+          <div class="achievement-desc">${a.desc} (${prog}/${a.target})</div>
+        </div>
+        <div class="achievement-reward">🪙 ${a.rewardCoins}</div>
+      `;
+      body.appendChild(item);
+    }
+  });
+}
+
+/* ---------- Amigos ---------- */
+function openFriends() {
+  openModal(t('modal.friends'), body => {
+    body.innerHTML = `<div class="friends-placeholder">${t('friends.placeholder')}</div>`;
+  });
+}
+
+/* ---------- Configurações ---------- */
+function openSettings() {
+  openModal(t('modal.settings'), body => {
+    const rows = [
+      { label: t('settings.sound'), key: 'sound', type: 'toggle' },
+      { label: t('settings.music'), key: 'music', type: 'toggle' },
+      { label: t('settings.quality'), key: 'quality', type: 'select',
+        options: ['baixa', 'média', 'alta'], translate: true },
+      { label: t('settings.language'), key: 'language', type: 'select',
+        options: ['pt-BR', 'en-US'], translate: false }
+    ];
+    for (const r of rows) {
+      const row = document.createElement('div');
+      row.className = 'settings-row';
+      row.innerHTML = `<span>${r.label}</span>`;
+      let input;
+      if (r.type === 'toggle') {
+        input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = game.settings[r.key];
+        input.onchange = () => {
+          game.settings[r.key] = input.checked;
+          playSound('click');
+          if (r.key === 'music') {
+            if (input.checked) startMusic(); else stopMusic();
+          }
+          saveGame(false);
+        };
+      } else {
+        input = document.createElement('select');
+        for (const opt of r.options) {
+          const o = document.createElement('option');
+          o.value = opt;
+          o.textContent = r.translate ? t('q.' + opt) : opt;
+          if (game.settings[r.key] === opt) o.selected = true;
+          input.appendChild(o);
+        }
+        input.onchange = () => {
+          game.settings[r.key] = input.value;
+          playSound('click');
+          if (r.key === 'language') applyLang();
+          saveGame(false);
+        };
+      }
+      row.appendChild(input);
+      body.appendChild(row);
+    }
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'settings-btn';
+    saveBtn.style.background = 'var(--blue)';
+    saveBtn.style.color = '#fff';
+    saveBtn.textContent = t('settings.saveNow');
+    saveBtn.onclick = () => { saveGame(true); refreshHud(); };
+
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'settings-btn';
+    resetBtn.style.background = 'var(--red)';
+    resetBtn.style.color = '#fff';
+    resetBtn.textContent = t('settings.reset');
+    resetBtn.onclick = () => {
+      confirmDialog(t('settings.resetConfirm'), () => resetGame());
+    };
+
+    body.appendChild(saveBtn);
+    body.appendChild(resetBtn);
+  });
+}
+
+/* ---------- Comprar (expansão + atalhos) ---------- */
+function openBuyMenu() {
+  openModal(t('modal.buy'), body => {
+    const price = expansionPrice();
+    const can = canExpand();
+    const afford = game.coins >= price;
+    const card = document.createElement('div');
+    card.className = 'shop-item';
+    card.style.maxWidth = '320px';
+    card.style.margin = '0 auto 14px';
+    card.innerHTML = `
+      <div class="shop-item-icon">🌍</div>
+      <div class="shop-item-name">${t('shop.expansion')}</div>
+      <div class="shop-item-size">${t('shop.expansionDesc')}</div>
+      <div class="shop-item-price">🪙 ${price.toLocaleString('pt-BR')}</div>
+      ${can ? '' : `<div class="shop-item-locked">${t('toast.expandLimit')}</div>`}
+    `;
+    const btn = document.createElement('button');
+    btn.className = 'shop-buy-btn';
+    btn.textContent = can ? t('shop.buyExpansion') : t('shop.unavailable');
+    btn.disabled = !can || !afford;
+    btn.onclick = () => { if (buyLand()) { closeModal(); refreshHud(); } };
+    card.appendChild(btn);
+    body.appendChild(card);
+
+    const hint = document.createElement('p');
+    hint.style.cssText = 'text-align:center;font-size:13px;color:#6d4c41';
+    hint.textContent = t('shop.hint');
+    body.appendChild(hint);
+  });
+}
+
+/* ---------- Diálogo de confirmação ---------- */
+let dialogCallback = null;
+function confirmDialog(text, onOk) {
+  $('dialog-text').textContent = text;
+  $('dialog-ok').textContent = t('dialog.ok');
+  $('dialog-cancel').textContent = t('dialog.cancel');
+  dialogCallback = onOk;
+  $('dialog-overlay').classList.remove('hidden');
+  playSound('click');
+}
+
+/* ---------- Barra de confirmação flutuante ---------- */
+function showConfirmBar(info) {
+  $('confirm-info').textContent = info;
+  $('confirm-ok').textContent = '✓ ' + t('dialog.ok');
+  $('confirm-cancel').textContent = '✕ ' + t('dialog.cancel');
+  $('confirm-bar').classList.remove('hidden');
+}
+function hideConfirmBar() { $('confirm-bar').classList.add('hidden'); }
+
+/* ---------- Ligação dos botões ---------- */
+function bindUi(handlers) {
+  $('btn-settings').onclick = openSettings;
+  $('btn-add-coins').onclick = openCoinShop;
+  $('btn-add-gems').onclick = openGemShop;
+  $('btn-build').onclick = () => handlers.build();
+  $('btn-move').onclick = () => handlers.move();
+  $('btn-remove').onclick = () => handlers.remove();
+  $('btn-rotate').onclick = () => handlers.rotate();
+  $('btn-buy').onclick = openBuyMenu;
+
+  for (const btn of document.querySelectorAll('.side-btn')) {
+    btn.onclick = () => {
+      const panel = btn.dataset.panel;
+      if (panel === 'missions') openMissions();
+      else if (panel === 'shop') openShop();
+      else if (panel === 'achievements') openAchievements();
+      else if (panel === 'friends') openFriends();
+    };
+  }
+
+  $('modal-close').onclick = closeModal;
+  $('modal-overlay').onclick = e => { if (e.target === $('modal-overlay')) closeModal(); };
+
+  $('dialog-ok').onclick = () => {
+    $('dialog-overlay').classList.add('hidden');
+    if (dialogCallback) dialogCallback();
+    dialogCallback = null;
+  };
+  $('dialog-cancel').onclick = () => { $('dialog-overlay').classList.add('hidden'); dialogCallback = null; };
+
+  $('confirm-ok').onclick = () => handlers.confirmOk();
+  $('confirm-cancel').onclick = () => handlers.confirmCancel();
+
+  // música só pode iniciar após um gesto do usuário (política de autoplay)
+  document.addEventListener('pointerdown', () => {
+    if (game.settings.music) startMusic();
+  }, { once: true });
+}
+
+</script>
+<script>
+/* ================= FAZENDA 3D — INICIALIZAÇÃO, ENTRADA E LOOP ================= */
+
+const canvas = $('game-canvas');
+const ctx = canvas.getContext('2d');
+
+const cam = { x: 0, y: 0, zoom: 1 };
+const MIN_ZOOM = 0.5, MAX_ZOOM = 2.2;
+
+const state = {
+  mode: 'idle',        // idle | build | move | remove | rotate
+  ghost: null,         // {type, gx, gy, rot, valid}
+  moveId: null,
+  rotateId: null,
+  ghostPinned: false,  // posição fixa aguardando confirmação
+  highlightTile: null
+};
+
+let lastPointerGrid = { gx: 12, gy: 12 };
+
+/* ---------- Canvas / resize ---------- */
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.floor(canvas.clientWidth * dpr);
+  canvas.height = Math.floor(canvas.clientHeight * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+
+/* ---------- Câmera ---------- */
+function centerCamera() {
+  const c = projectPoint((game.ownedArea.x0 + game.ownedArea.x1 + 1) / 2,
+                         (game.ownedArea.y0 + game.ownedArea.y1 + 1) / 2, 0);
+  cam.x = c.x; cam.y = c.y;
+}
+
+function clampCamera() {
+  const limit = GRID_SIZE * TILE_W / 2 + 200;
+  cam.x = Math.max(-limit, Math.min(limit, cam.x));
+  cam.y = Math.max(-limit, Math.min(limit, cam.y));
+}
+
+function zoomAt(sx, sy, factor) {
+  const before = screenToWorld(cam, sx, sy, canvas.clientWidth, canvas.clientHeight);
+  cam.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, cam.zoom * factor));
+  const after = screenToWorld(cam, sx, sy, canvas.clientWidth, canvas.clientHeight);
+  cam.x += before.x - after.x;
+  cam.y += before.y - after.y;
+  clampCamera();
+}
+
+/* ---------- Entrada: mouse e toque ---------- */
+const pointer = { down: false, dragging: false, sx: 0, sy: 0, cx: 0, cy: 0 };
+const touches = new Map();
+let pinchActive = false;
+let pinchDist = 0;
+
+function eventPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function gridFromEvent(e) {
+  const p = eventPos(e);
+  const w = screenToWorld(cam, p.x, p.y, canvas.clientWidth, canvas.clientHeight);
+  lastPointerGrid = screenToGrid(w.x, w.y);
+  return lastPointerGrid;
+}
+
+canvas.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+  if (e.pointerType === 'touch') {
+    touches.set(e.pointerId, eventPos(e));
+    if (touches.size === 2) {
+      pinchActive = true;
+      const [a, b] = [...touches.values()];
+      pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
+      return;
+    }
+  }
+
+  pointer.down = true; pointer.dragging = false;
+  pointer.sx = e.clientX; pointer.sy = e.clientY;
+  pointer.cx = cam.x; pointer.cy = cam.y;
+  canvas.setPointerCapture(e.pointerId);
+});
+
+canvas.addEventListener('pointermove', e => {
+  if (e.pointerType === 'touch' && touches.has(e.pointerId)) {
+    touches.set(e.pointerId, eventPos(e));
+    if (touches.size >= 2) {
+      const [a, b] = [...touches.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinchDist > 0) {
+        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        zoomAt(mid.x, mid.y, d / pinchDist);
+      }
+      pinchDist = d;
+      return;
+    }
+  }
+
+  gridFromEvent(e);
+
+  if (pointer.down) {
+    const dx = e.clientX - pointer.sx, dy = e.clientY - pointer.sy;
+    if (!pointer.dragging && Math.abs(dx) + Math.abs(dy) > 6) pointer.dragging = true;
+    if (pointer.dragging) {
+      cam.x = pointer.cx - dx / cam.zoom;
+      cam.y = pointer.cy - dy / cam.zoom;
+      clampCamera();
+      canvas.classList.add('dragging');
+    }
+  }
+
+  if (!state.ghostPinned && state.ghost &&
+      (state.mode === 'build' || (state.mode === 'move' && state.moveId))) {
+    updateGhostPosition(lastPointerGrid.gx, lastPointerGrid.gy);
+  }
+});
+
+function endPointer(e) {
+  const wasPinch = pinchActive;
+
+  if (e.pointerType === 'touch') touches.delete(e.pointerId);
+
+  if (touches.size === 1 && wasPinch) {
+    // pinça -> 1 dedo restante: reancora a câmera sem dar salto
+    const [a] = [...touches.values()];
+    const rect = canvas.getBoundingClientRect();
+    pointer.down = true; pointer.dragging = false;
+    pointer.sx = rect.left + a.x; pointer.sy = rect.top + a.y;
+    pointer.cx = cam.x; pointer.cy = cam.y;
+  }
+  if (touches.size === 0) {
+    pinchActive = false;
+    pinchDist = 0;
+  }
+
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (wasPinch) {
+    canvas.classList.remove('dragging');
+    if (touches.size === 0) pointer.down = false;
+    return;
+  }
+  if (!pointer.down) return;
+
+  canvas.classList.remove('dragging');
+  const wasDragging = pointer.dragging;
+  pointer.down = false; pointer.dragging = false;
+  if (!wasDragging) handleClick(e);
+}
+
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const p = eventPos(e);
+  zoomAt(p.x, p.y, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+}, { passive: false });
+
+/* ---------- Clique no mundo ---------- */
+function handleClick(e) {
+  const g = gridFromEvent(e);
+
+  if (state.mode === 'build' && state.ghost) {
+    if (state.ghostPinned) {
+      // novo clique reposiciona o fantasma em vez de ficar preso
+      state.ghostPinned = false;
+      hideConfirmBar();
+      updateGhostPosition(g.gx, g.gy);
+      if (state.ghost.valid) {
+        state.ghostPinned = true;
+        const def = BUILDINGS[state.ghost.type];
+        showConfirmBar(t('confirm.build', { icon: def.icon, name: t('b_' + def.id), price: def.price.toLocaleString('pt-BR') }));
+      }
+      return;
+    }
+    updateGhostPosition(g.gx, g.gy);
+    if (state.ghost.valid) {
+      state.ghostPinned = true;
+      const def = BUILDINGS[state.ghost.type];
+      showConfirmBar(t('confirm.build', { icon: def.icon, name: t('b_' + def.id), price: def.price.toLocaleString('pt-BR') }));
+    } else {
+      playSound('error');
+      showToast(t('toast.invalid'));
+    }
+    return;
+  }
+
+  if (state.mode === 'move') {
+    if (!state.moveId) {
+      const sel = buildingAt(g.gx, g.gy);
+      if (!sel) { showToast(t('toast.clickBuilding')); return; }
+      state.moveId = sel.id;
+      state.ghost = { type: sel.type, gx: sel.gx, gy: sel.gy, rot: sel.rot, valid: true };
+      showToast(t('toast.moveSelect'));
+      return;
+    }
+    if (state.ghostPinned) {
+      state.ghostPinned = false;
+      hideConfirmBar();
+      updateGhostPosition(g.gx, g.gy);
+      if (state.ghost.valid) {
+        state.ghostPinned = true;
+        showConfirmBar(t('confirm.move'));
+      }
+      return;
+    }
+    updateGhostPosition(g.gx, g.gy);
+    if (state.ghost.valid) {
+      state.ghostPinned = true;
+      showConfirmBar(t('confirm.move'));
+    } else {
+      playSound('error');
+      showToast(t('toast.invalid'));
+    }
+    return;
+  }
+
+  const b = buildingAt(g.gx, g.gy);
+
+  if (state.mode === 'remove') {
+    if (b) {
+      const def = BUILDINGS[b.type];
+      const refund = Math.floor(def.price * def.refund);
+      confirmDialog(
+        t('dialog.removeText', { icon: def.icon, name: t('b_' + def.id), refund: refund.toLocaleString('pt-BR') }),
+        () => {
+          const r = removeBuilding(b.id);
+          if (r) showToast(t('toast.removed', { refund: r.refund.toLocaleString('pt-BR') }));
+          refreshHud();
+          autoClaimReady();
+        });
+    } else {
+      showToast(t('toast.removeHint'));
+    }
+    return;
+  }
+
+  if (state.mode === 'rotate') {
+    if (b) {
+      const def = BUILDINGS[b.type];
+      if (def.w === 1 && def.d === 1) {
+        showToast(t('toast.noRotate'));
+        return;
+      }
+      state.rotateId = b.id;
+      const newRot = (b.rot + 1) % 4;
+      const valid = canPlace(b.type, b.gx, b.gy, newRot, b.id);
+      state.ghost = { type: b.type, gx: b.gx, gy: b.gy, rot: newRot, valid };
+      state.ghostPinned = true;
+      showConfirmBar(t('confirm.rotate'));
+    } else {
+      showToast(t('toast.rotateHint'));
+    }
+    return;
+  }
+
+  // modo normal: destaque informativo
+  if (b) {
+    const def = BUILDINGS[b.type];
+    state.highlightTile = { gx: b.gx, gy: b.gy };
+    showToast(t('toast.highlight', { icon: def.icon, name: t('b_' + def.id) }));
+    setTimeout(() => { state.highlightTile = null; }, 1200);
+  }
+}
+
+/* ---------- Fantasma ---------- */
+function updateGhostPosition(gx, gy) {
+  if (!state.ghost) return;
+  const g = state.ghost;
+  const f = footprintOf(g.type, g.rot);
+  g.gx = Math.max(0, Math.min(GRID_SIZE - f.w, gx));
+  g.gy = Math.max(0, Math.min(GRID_SIZE - f.d, gy));
+  g.valid = canPlace(g.type, g.gx, g.gy, g.rot, state.moveId || undefined);
+}
+
+/* ---------- Modos ---------- */
+function setMode(mode) {
+  state.mode = mode;
+  state.ghost = null;
+  state.ghostPinned = false;
+  state.moveId = null;
+  state.rotateId = null;
+  hideConfirmBar();
+  canvas.classList.remove('mode-build', 'mode-move', 'mode-remove', 'mode-rotate');
+  if (mode !== 'idle') canvas.classList.add('mode-' + mode);
+  for (const btn of document.querySelectorAll('.build-btn')) btn.classList.remove('active');
+  const map = { build: 'btn-build', move: 'btn-move', remove: 'btn-remove', rotate: 'btn-rotate' };
+  if (map[mode]) $(map[mode]).classList.add('active');
+}
+
+function enterBuildMode(typeId) {
+  setMode('build');
+  const def = BUILDINGS[typeId];
+  state.ghost = { type: typeId, gx: lastPointerGrid.gx, gy: lastPointerGrid.gy, rot: 0, valid: false };
+  updateGhostPosition(lastPointerGrid.gx, lastPointerGrid.gy);
+  showToast(t('toast.buildHint', { icon: def.icon }));
+}
+
+const uiHandlers = {
+  build() {
+    if (state.mode === 'build' && !state.ghostPinned) { setMode('idle'); return; }
+    playSound('click');
+    openShop();
+  },
+  move() {
+    playSound('click');
+    if (state.mode === 'move') { setMode('idle'); return; }
+    setMode('move');
+    showToast(t('toast.moveHint'));
+  },
+  remove() {
+    playSound('click');
+    if (state.mode === 'remove') { setMode('idle'); return; }
+    setMode('remove');
+    showToast(t('toast.removeHint'));
+  },
+  rotate() {
+    playSound('click');
+    if (state.mode === 'rotate') { setMode('idle'); return; }
+    setMode('rotate');
+    showToast(t('toast.rotateHint'));
+  },
+  confirmOk() {
+    if (state.mode === 'build' && state.ghost) {
+      const b = placeBuilding(state.ghost.type, state.ghost.gx, state.ghost.gy, state.ghost.rot);
+      if (b) {
+        showToast(t('toast.built', { icon: BUILDINGS[b.type].icon, name: t('b_' + b.type) }));
+        autoClaimReady();
+        refreshHud();
+        // continua no modo construir, fantasma livre a partir do cursor
+        const type = state.ghost.type;
+        setMode('build');
+        state.ghost = { type, gx: lastPointerGrid.gx, gy: lastPointerGrid.gy, rot: 0, valid: false };
+        updateGhostPosition(lastPointerGrid.gx, lastPointerGrid.gy);
+      }
+    } else if (state.mode === 'move' && state.moveId && state.ghost) {
+      if (moveBuilding(state.moveId, state.ghost.gx, state.ghost.gy, state.ghost.rot)) {
+        showToast(t('toast.moved'));
+        autoClaimReady();
+      }
+      setMode('idle');
+    } else if (state.mode === 'rotate' && state.rotateId) {
+      if (rotateBuilding(state.rotateId)) {
+        showToast(t('toast.rotated'));
+      } else {
+        playSound('error');
+        showToast(t('toast.rotateNoSpace'));
+      }
+      setMode('idle');
+    } else {
+      hideConfirmBar();
+    }
+  },
+  confirmCancel() {
+    setMode('idle');
+  }
+};
+
+/* ---------- Teclado ---------- */
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (!$('modal-overlay').classList.contains('hidden')) { closeModal(); return; }
+    if (!$('dialog-overlay').classList.contains('hidden')) {
+      $('dialog-overlay').classList.add('hidden');
+      dialogCallback = null;
+      return;
+    }
+    setMode('idle');
+    return;
+  }
+  if ((e.key === 'r' || e.key === 'R') && state.ghost && !state.ghostPinned &&
+      (state.mode === 'build' || state.mode === 'move')) {
+    state.ghost.rot = (state.ghost.rot + 1) % 4;
+    updateGhostPosition(state.ghost.gx, state.ghost.gy);
+  }
+  if (e.key === 'Enter' && state.ghostPinned) uiHandlers.confirmOk();
+});
+
+/* ---------- Salvamento ao sair ---------- */
+window.addEventListener('beforeunload', () => saveGame(false));
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveGame(false);
+});
+
+/* ---------- Loop ---------- */
+let lastTime = 0;
+let autosaveAcc = 0;
+
+function loop(ts) {
+  const dt = Math.min((ts - lastTime) / 1000, 1);
+  lastTime = ts;
+  render(ctx, cam, canvas.clientWidth, canvas.clientHeight, state);
+  autosaveAcc += dt;
+  if (autosaveAcc > 15) { autosaveAcc = 0; saveGame(false); }
+  requestAnimationFrame(loop);
+}
+
+/* ---------- Início ---------- */
+function init() {
+  resize();
+  const loaded = loadGame();
+  if (!loaded) {
+    // propriedade inicial: casa e poço já construídos
+    placeBuilding('house', 12, 12, 0, true);
+    placeBuilding('well', 16, 16, 0, true);
+    saveGame(false);
+  }
+  game.stats.level = game.level;
+  game.stats.peak_coins = Math.max(game.stats.peak_coins || 0, game.coins);
+  applyLang();
+  centerCamera();
+  bindUi(uiHandlers);
+  refreshHud();
+  requestAnimationFrame(loop);
+  if (!loaded) showToast(t('toast.welcome'));
+}
+
+init();
+
+</script>
+</body>
+</html>

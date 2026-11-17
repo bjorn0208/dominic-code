@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fazenda 3D — Simulador Isométrico</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+
+<!-- ================= HUD SUPERIOR ================= -->
+<div id="hud-top">
+  <div id="profile-card" class="hud-card">
+    <div id="avatar">🧑‍🌾</div>
+    <div id="profile-info">
+      <div id="farm-name">Fazenda do Jogador</div>
+      <div id="level-row">
+        <span id="level-star">⭐</span>
+        <span id="level-text">Nível 1</span>
+        <div id="xp-bar"><div id="xp-fill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="currencies">
+    <div class="currency hud-card" id="coins-card">
+      <span class="cur-icon">🪙</span>
+      <span id="coins-value">0</span>
+      <button id="btn-add-coins" title="Loja de moedas">＋</button>
+    </div>
+    <div class="currency hud-card" id="gems-card">
+      <span class="cur-icon">💎</span>
+      <span id="gems-value">0</span>
+      <button id="btn-add-gems" title="Loja de diamantes">＋</button>
+    </div>
+    <button id="btn-settings" class="hud-card" title="Configurações">⚙️</button>
+  </div>
+</div>
+
+<!-- ================= MENU LATERAL ================= -->
+<div id="side-menu">
+  <button class="side-btn" data-panel="missions"><span class="side-icon">📋</span><span class="side-label" data-i18n="menu.missions">Missões</span></button>
+  <button class="side-btn" data-panel="shop"><span class="side-icon">🏪</span><span class="side-label" data-i18n="menu.shop">Loja</span></button>
+  <button class="side-btn" data-panel="achievements"><span class="side-icon">🏆</span><span class="side-label" data-i18n="menu.achievements">Conquistas</span></button>
+  <button class="side-btn" data-panel="friends"><span class="side-icon">👥</span><span class="side-label" data-i18n="menu.friends">Amigos</span></button>
+</div>
+
+<!-- ================= BARRA DE CONSTRUÇÃO (INFERIOR) ================= -->
+<div id="build-bar">
+  <button class="build-btn" id="btn-build"><span class="build-icon">🪧</span><span class="build-label" data-i18n="build.build">Construir</span></button>
+  <button class="build-btn" id="btn-move"><span class="build-icon">✥</span><span class="build-label" data-i18n="build.move">Mover</span></button>
+  <button class="build-btn" id="btn-remove"><span class="build-icon">✖</span><span class="build-label" data-i18n="build.remove">Remover</span></button>
+  <button class="build-btn" id="btn-rotate"><span class="build-icon">🔄</span><span class="build-label" data-i18n="build.rotate">Girar</span></button>
+  <button class="build-btn" id="btn-buy"><span class="build-icon">🛒</span><span class="build-label" data-i18n="build.buy">Comprar</span></button>
+</div>
+
+<!-- Barra de confirmação flutuante (construir / mover / girar) -->
+<div id="confirm-bar" class="hidden">
+  <span id="confirm-info"></span>
+  <button id="confirm-ok" class="btn-ok">✓ Confirmar</button>
+  <button id="confirm-cancel" class="btn-cancel">✕ Cancelar</button>
+</div>
+
+<!-- Toast de avisos -->
+<div id="toast" class="hidden"></div>
+
+<!-- ================= PAINÉIS MODAIS ================= -->
+<div id="modal-overlay" class="hidden">
+  <div id="modal">
+    <div id="modal-header">
+      <span id="modal-title">Título</span>
+      <button id="modal-close">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Diálogo de confirmação (remover etc.) -->
+<div id="dialog-overlay" class="hidden">
+  <div id="dialog">
+    <div id="dialog-text"></div>
+    <div id="dialog-buttons">
+      <button id="dialog-cancel" class="btn-cancel" data-i18n="dialog.cancel">Cancelar</button>
+      <button id="dialog-ok" class="btn-ok" data-i18n="dialog.ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/iso.js"></script>
+<script src="js/game.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
